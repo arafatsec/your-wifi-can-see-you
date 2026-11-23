@@ -33,7 +33,9 @@ We only list what exists and is tested. No measured result is claimed until it c
 | `CSIData` standard format (`src/csi/types.py`) | ✅ Implemented, tested |
 | Phase sanitization (`src/csi/sanitize.py`) | ✅ Implemented, tested |
 | Synthetic multipath generator (`src/csi/synthetic.py`) | ✅ For tests only, output labelled `synthetic=True` |
-| Loaders for real CSI hardware | ⏳ Not started ([help wanted](https://github.com/arafatsec/your-wifi-can-see-you/issues/6)) |
+| ESP32 CSI loader (`src/csi/loaders/esp32.py`) | 🧪 Tested on synthetic ESP32-format logs, not yet on a real board ([guide](docs/hardware/esp32.md)) |
+| ESP32 recording script (`scripts/record_esp32.py`) | 🧪 Written, not yet run against a real board |
+| Loaders for Intel 5300 / Nexmon | ⏳ Not started ([help wanted](https://github.com/arafatsec/your-wifi-can-see-you/issues/6)) |
 | Presence / motion detection | ⏳ Planned |
 | Pose / DensePose model | ⏳ Planned, no trained model yet |
 | Real-world accuracy numbers | ❌ None yet |
@@ -43,6 +45,8 @@ We only list what exists and is tested. No measured result is claimed until it c
 | Path | What's inside |
 |---|---|
 | [`docs/background.md`](docs/background.md) | WiFi CSI, multipath, and how the CMU pipeline works |
+| [`docs/hardware/esp32.md`](docs/hardware/esp32.md) | Capture real CSI with two cheap ESP32 boards |
+| [`scripts/`](scripts/) | Data recording tools |
 | [`papers/reading-list.md`](papers/reading-list.md) | Curated papers, grouped by topic |
 | [`datasets/README.md`](datasets/README.md) | Public WiFi sensing datasets and CSI capture tools |
 | [`src/`](src/) | Code: CSI preprocessing, models, training (work in progress) |
