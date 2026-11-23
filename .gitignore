@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+# Data & models (never commit)
+data/
+*.dat
+*.pcap
+*.h5
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
