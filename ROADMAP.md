@@ -13,7 +13,9 @@ Legend: 🟢 good first issue · 🟡 intermediate · 🔴 advanced
 - [x] Standard `CSIData` format that every loader/generator returns
 - [x] Phase sanitization: unwrap, median filter, linear fit removal
 - [x] Labelled synthetic multipath CSI generator for tests (toy model, never for reported results)
-- [ ] 🟡 Loaders for common CSI formats returning `CSIData` (Intel 5300 `.dat`, Nexmon `.pcap`, ESP32 CSV)
+- [x] ESP32 CSI log loader returning `CSIData` + recording script + hardware guide
+- [ ] 🟢 Verify the ESP32 loader and guide on real boards
+- [ ] 🟡 Loaders for Intel 5300 `.dat` and Nexmon `.pcap` returning `CSIData`
 - [ ] 🟢 Visualization: amplitude/phase heatmaps over time
 
 ## Phase 2.5: Presence & motion detection (first real-world milestone)
