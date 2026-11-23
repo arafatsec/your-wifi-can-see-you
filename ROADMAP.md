@@ -10,10 +10,18 @@ Legend: 🟢 good first issue · 🟡 intermediate · 🔴 advanced
 - [ ] 🟡 Diagram of the full pipeline (SVG in `docs/`)
 
 ## Phase 2: CSI preprocessing toolkit (`src/csi/`)
-- [ ] 🟡 Loaders for common CSI formats (Intel 5300 `.dat`, Nexmon `.pcap`, ESP32 CSV)
-- [ ] 🟡 Phase sanitization: unwrap, median filter, linear fit removal
+- [x] Standard `CSIData` format that every loader/generator returns
+- [x] Phase sanitization: unwrap, median filter, linear fit removal
+- [x] Labelled synthetic multipath CSI generator for tests (toy model, never for reported results)
+- [ ] 🟡 Loaders for common CSI formats returning `CSIData` (Intel 5300 `.dat`, Nexmon `.pcap`, ESP32 CSV)
 - [ ] 🟢 Visualization: amplitude/phase heatmaps over time
-- [ ] 🟢 Unit tests with small synthetic CSI samples
+
+## Phase 2.5: Presence & motion detection (first real-world milestone)
+Much easier than pose, works even on cheap ESP32 hardware, and proves the capture pipeline end to end.
+- [ ] 🟢 Baseline: temporal amplitude variance threshold (empty room vs. person moving)
+- [ ] 🟡 Doppler / motion features from CSI time series
+- [ ] 🟡 Record a small, consented, real dataset (empty / standing / walking) and report accuracy
+- [ ] 🟡 Simple classifier (e.g. random forest or 1D CNN) with honest train/test split by session
 
 ## Phase 3: Reproduction (`src/models/`)
 - [ ] 🔴 Modality Translation Network (PyTorch)

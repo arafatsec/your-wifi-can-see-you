@@ -24,6 +24,20 @@ think hard about what it means for privacy.
 4. **Extend**: cross-environment generalization, cheap hardware (ESP32), multi-person scenes.
 5. **Protect**: study the privacy risks and defenses (detection, jamming, CSI obfuscation).
 
+## ✅ What actually works today
+
+We only list what exists and is tested. No measured result is claimed until it can be reproduced.
+
+| Component | Status |
+|---|---|
+| `CSIData` standard format (`src/csi/types.py`) | ✅ Implemented, tested |
+| Phase sanitization (`src/csi/sanitize.py`) | ✅ Implemented, tested |
+| Synthetic multipath generator (`src/csi/synthetic.py`) | ✅ For tests only, output labelled `synthetic=True` |
+| Loaders for real CSI hardware | ⏳ Not started ([help wanted](https://github.com/arafatsec/your-wifi-can-see-you/issues/6)) |
+| Presence / motion detection | ⏳ Planned |
+| Pose / DensePose model | ⏳ Planned, no trained model yet |
+| Real-world accuracy numbers | ❌ None yet |
+
 ## 🗂️ Repository layout
 
 | Path | What's inside |
@@ -67,6 +81,16 @@ pip install -r requirements.txt
 
 Then read [`docs/background.md`](docs/background.md) and pick something from the
 [roadmap](ROADMAP.md) or the [good first issues](https://github.com/arafatsec/your-wifi-can-see-you/labels/good%20first%20issue).
+
+## 🔗 Related projects
+
+- [ruvnet/wifi-densepose](https://github.com/ruvnet/wifi-densepose) (also re-uploaded as
+  [davidakpele/wifi-densepose](https://github.com/davidakpele/wifi-densepose)): a large system
+  with API, deployment and UI code. As of our review (Nov 2026), its CSI capture returns random
+  placeholder data, and it has no training code, dataset or trained weights. It's useful as a
+  software-architecture reference, not as a working pose estimator.
+
+Know a project with real, reproducible results? Please add it.
 
 ## 🤝 Contributing
 
