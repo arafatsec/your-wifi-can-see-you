@@ -109,3 +109,50 @@ def test_empty_file_raises(tmp_path):
     f.write_text("boot\nno csi here\n", encoding="utf-8")
     with pytest.raises(ValueError, match="no CSI_DATA"):
         load_esp32_csi(f)
+
+
+# Header printed by esp-csi csi_recv (ESP-IDF v5.5.6) on classic ESP32, copied from a real board.
+ESPCSI_HEADER = ("type,id,mac,rssi,rate,sig_mode,mcs,bandwidth,smoothing,not_sounding,aggregation,stbc,"
+                 "fec_coding,sgi,noise_floor,ampdu_cnt,channel,secondary_channel,local_timestamp,ant,"
+                 "sig_len,rx_format,len,first_word,data")
+
+
+def test_espcsi_ht40_keeps_lltf_and_drops_invalid_first_word(tmp_path):
+    """Real esp-csi default output: 40 MHz, 384 values = 128 L-LTF + 256 HT-LTF, first_word flag set."""
+    n = 30
+    re_, im_, null = _true_channel(n)
+    order = list(range(32, 64)) + list(range(0, 32))
+    lines = [ESPCSI_HEADER]
+    for p in range(n):
+        lltf = []
+        for i in order:
+            lltf += [int(im_[p, i]), int(re_[p, i])]
+        lltf[:4] = [47, -16, 2, 0]  # junk in the first word, as seen on real hardware
+        htltf = [7] * 256           # HT-LTF block that must be ignored
+        vals = lltf + htltf
+        cols = ["CSI_DATA", str(p), "1a:00:00:00:00:00", "-42", "11", "1", "0", "1", "1", "1", "0", "0",
+                "0", "0", "-96", "0", "11", "2", str(1_000_000 + p * 10_000), "0", "47", "1", "384", "1"]
+        lines.append(",".join(cols) + ',"[' + ",".join(map(str, vals)) + ']"')
+    f = tmp_path / "espcsi.csv"
+    f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    d = load_esp32_csi(f)
+    assert d.metadata["raw_values_per_packet"] == 384
+    assert d.metadata["lltf_only"] is True
+    assert d.metadata["first_word_invalid_packets"] == n
+    assert d.metadata["channel"] == 11
+    # subcarriers 0 and 1 are invalidated by the flag; 0 is DC (already null), 1 is dropped too
+    keep = ~null.copy()
+    keep[np.arange(-32, 32) == 1] = False
+    assert list(d.metadata["subcarrier_index"]) == list(np.arange(-32, 32)[keep])
+    assert np.allclose(d.csi[:, :, 0, 0], (re_ + 1j * im_)[:, keep])
+    span = d.subcarrier_freqs.max() - d.subcarrier_freqs.min()
+    assert span < 20e6  # one 20 MHz channel, not the 60 MHz the old code produced
+
+
+def test_lltf_only_can_be_disabled(tmp_path):
+    f = tmp_path / "log.csv"
+    write_log(f)  # 128-value records: nothing to strip either way
+    a = load_esp32_csi(f, lltf_only=False)
+    b = load_esp32_csi(f)
+    assert a.csi.shape == b.csi.shape and b.metadata["lltf_only"] is False

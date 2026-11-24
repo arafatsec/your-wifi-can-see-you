@@ -8,8 +8,13 @@ Both print one packet per line starting with `CSI_DATA`, with the raw CSI as a b
 of signed 8-bit integers at the end of the line. Each subcarrier is two numbers:
 imaginary part first, then real part (per Espressif's documentation).
 
-For 20 MHz HT/legacy packets the ESP32 reports the 64 L-LTF subcarriers in the order
-0..31, -32..-1. We reorder them to -32..31 so frequency increases along the subcarrier axis.
+The ESP32 reports the 64 L-LTF subcarriers in the order 0..31, -32..-1. We reorder them to
+-32..31 so frequency increases along the subcarrier axis. For HT packets the L-LTF block is
+followed by HT-LTF blocks (the esp-csi examples' default 40 MHz mode gives 384 values per
+packet); by default only the leading L-LTF block is kept.
+
+Verified on real hardware: two classic ESP32-D0WD-V3 boards running esp-csi csi_send/csi_recv
+(ESP-IDF v5.5.6, channel 11, HT40), November 2026.
 
 If the log has a header row (a line starting with `type,`), column positions are read from it.
 Otherwise the ESP32-CSI-Tool default column layout is assumed.
@@ -81,6 +86,7 @@ def load_esp32_csi(
     path: str | Path,
     mac: str | None = None,
     drop_null_subcarriers: bool = True,
+    lltf_only: bool = True,
 ) -> CSIData:
     """Read an ESP32 CSI log file.
 
@@ -89,6 +95,9 @@ def load_esp32_csi(
         mac: keep only packets from this transmitter MAC (case-insensitive). If None, the most
             frequent MAC in the log is used, since receivers often overhear other devices.
         drop_null_subcarriers: remove subcarriers that are zero in every packet (DC and guard).
+        lltf_only: for records longer than 128 values (HT20/HT40 packets with HT-LTF blocks
+            appended), keep only the leading 64-subcarrier L-LTF block. This matches the
+            esp-csi examples' default 40 MHz output (384 values per packet).
 
     Returns:
         CSIData with shape (packets, subcarriers, 1, 1) and source "esp32".
@@ -113,6 +122,20 @@ def load_esp32_csi(
         raise ValueError(f"odd CSI length {n_vals}: expected imaginary/real pairs")
 
     raw = np.stack([v for _, v in rows]).astype(np.float64)
+
+    # When the firmware's "first word invalid" flag is set, the first 4 bytes (subcarriers 0 and 1
+    # in ESP32 order) hold junk, not channel estimates. Zero them so they are treated as null.
+    first_word_invalid = np.array(
+        [f.get("first_word", f.get("first_word_invalid", "0")).strip() == "1" for f, _ in rows])
+    raw[first_word_invalid, :4] = 0
+
+    # HT20/HT40 packets append HT-LTF (and STBC) blocks after the L-LTF, e.g. 256, 384 or 640
+    # values. The first 128 values are always the 64 L-LTF subcarriers of the primary 20 MHz
+    # channel, the one field present in every packet type, so that is what we keep.
+    lltf_only = lltf_only and n_vals > 128 and n_vals % 128 == 0
+    if lltf_only:
+        raw = raw[:, :128]
+
     csi = raw[:, 1::2] + 1j * raw[:, 0::2]  # pairs are (imag, real)
     reordered = csi.shape[1] == 64
     if reordered:
@@ -151,6 +174,9 @@ def load_esp32_csi(
             "channel": channel,
             "subcarrier_index": idx,
             "lltf_reordered": reordered,
+            "raw_values_per_packet": n_vals,
+            "lltf_only": lltf_only,
+            "first_word_invalid_packets": int(first_word_invalid.sum()),
             "rssi_dbm": rssi if len(rssi) == len(rows) else None,
             "packets_total": len(parsed),
             "packets_used": len(rows),
