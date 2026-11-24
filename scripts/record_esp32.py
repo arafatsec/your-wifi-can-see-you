@@ -50,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default="data/recordings")
     ap.add_argument("--consent", action="store_true", help="confirm everyone recorded has agreed")
     ap.add_argument("--list-ports", action="store_true", help="show serial ports and exit")
+    ap.add_argument("--no-reset", action="store_true",
+                    help="don't restart the board first (esp-csi prints its column header only after a restart)")
     args = ap.parse_args(argv)
 
     try:
@@ -74,6 +76,14 @@ def main(argv: list[str] | None = None) -> int:
     started = datetime.now().isoformat(timespec="seconds")
     with serial.Serial(args.port, args.baud, timeout=1) as ser, open(path, "w", encoding="utf-8") as f:
         ser.reset_input_buffer()
+        if not args.no_reset:
+            # Pulse EN through the board's auto-reset circuit. esp-csi's csi_recv prints its
+            # column header with the first packet after boot, and the loader needs that header.
+            # (Don't flush the buffer after this, or the header can be thrown away.)
+            ser.dtr = False
+            ser.rts = True
+            time.sleep(0.1)
+            ser.rts = False
         t_end = time.monotonic() + args.seconds
         print(f"Recording '{args.label}' for {args.seconds:.0f} s to {path} ... (Ctrl+C to stop early)")
         try:

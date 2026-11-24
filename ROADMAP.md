@@ -14,7 +14,7 @@ Legend: 🟢 good first issue · 🟡 intermediate · 🔴 advanced
 - [x] Phase sanitization: unwrap, median filter, linear fit removal
 - [x] Labelled synthetic multipath CSI generator for tests (toy model, never for reported results)
 - [x] ESP32 CSI log loader returning `CSIData` + recording script + hardware guide
-- [ ] 🟢 Verify the ESP32 loader and guide on real boards
+- [x] Verify the ESP32 loader and guide on real boards (classic ESP32 + esp-csi, Nov 2026)
 - [ ] 🟡 Loaders for Intel 5300 `.dat` and Nexmon `.pcap` returning `CSIData`
 - [ ] 🟢 Visualization: amplitude/phase heatmaps over time
 

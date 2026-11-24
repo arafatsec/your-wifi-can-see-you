@@ -4,9 +4,11 @@ The cheapest way to capture **real** WiFi Channel State Information (CSI): two E
 about USD 15–30 in total. One board transmits packets, the other receives them and prints the
 CSI of every packet over USB to your laptop.
 
-> Status: the loader and recording script are tested on synthetic logs in the ESP32 format.
-> Nobody in this project has tested them on a real board yet. If you do, please report back in an
-> issue, including any fixes to the steps below.
+> Status: verified on real hardware in November 2026 with two classic ESP32-D0WD-V3 boards
+> (one CP2102 and one CH9102 USB chip), Espressif esp-csi `csi_send`/`csi_recv` built with
+> ESP-IDF v5.5.6, on Windows 11. Measured: about 70 packets per second, RSSI about -45 dBm with
+> the boards side by side, 55 L-LTF subcarriers per packet after loading. Please report results
+> from other boards in an issue.
 
 ## What you get (and don't)
 
@@ -30,17 +32,43 @@ Start with presence and motion detection (roadmap phase 2.5). Full pose needs mo
 
 ## 2. Software
 
-1. Install **ESP-IDF** (Espressif's SDK) by following Espressif's "Get Started" guide for your OS.
-2. Get CSI firmware. Either:
+1. Install the USB driver for your board's serial chip if Windows shows it with an error:
+   Silicon Labs **CP210x** driver for CP2102 boards (silabs.com), WCH driver for CH340/CH9102 boards
+   (Windows 11 often installs CH9102 by itself). The board should appear as a `COMx` port.
+2. Install **ESP-IDF** (Espressif's SDK). Use **v5.5.x**: esp-csi's examples have a known build
+   failure with newer releases (esp-csi issue #267). On Windows, for example:
+
+```powershell
+git clone --depth 1 --branch v5.5.6 --recurse-submodules --shallow-submodules https://github.com/espressif/esp-idf.git C:\esp\esp-idf
+$env:IDF_TOOLS_PATH = "C:\Espressif"; C:\esp\esp-idf\install.ps1 esp32
+```
+
+3. Get CSI firmware. Either:
    - **Espressif esp-csi** (official): github.com/espressif/esp-csi, examples `csi_send` and
      `csi_recv` under `examples/get-started`.
    - **ESP32-CSI-Tool** (community, classic ESP32): github.com/StevenMHernandez/ESP32-CSI-Tool,
      projects `active_ap` (transmitter) and `active_sta` (receiver).
-3. Flash the **transmitter** firmware to board A and the **receiver** firmware to board B
+4. Flash the **transmitter** firmware to board A and the **receiver** firmware to board B
    (`idf.py -p <PORT> flash`). Set the same WiFi channel on both if the firmware asks.
-4. Check the receiver's serial baud rate in its config (`idf.py menuconfig`). 921600 is common;
-   our recording script defaults to it.
-5. On the laptop, inside this repo:
+5. Check the receiver's serial baud rate in its config (`idf.py menuconfig`). esp-csi uses 921600,
+   which is our recording script's default.
+
+   With esp-csi, build and flash from a PowerShell window where ESP-IDF is loaded:
+
+```powershell
+$env:IDF_TOOLS_PATH = "C:\Espressif"; . C:\esp\esp-idf\export.ps1
+cd C:\esp\esp-csi\examples\get-started\csi_send; idf.py set-target esp32; idf.py -p COM6 flash
+cd ..\csi_recv; idf.py set-target esp32; idf.py -p COM5 flash
+```
+
+   Notes on esp-csi's default output (handled by our loader):
+   - It uses channel 11 at 40 MHz, so each packet has 384 values: the 64-subcarrier L-LTF block
+     (128 values) followed by HT-LTF blocks. The loader keeps the L-LTF block.
+   - The first 4 values are junk when the `first_word` column is 1. The loader drops them.
+   - The column header is printed once, with the first packet after the board starts. The
+     recording script restarts the board when it begins so the header is captured.
+   - The receiver only prints CSI from the sender's fixed MAC `1a:00:00:00:00:00`.
+6. On the laptop, inside this repo:
 
 ```bash
 pip install -r requirements.txt   # includes pyserial
@@ -105,6 +133,8 @@ The loader:
 | 0 packets recorded | wrong baud rate; transmitter not powered; boards on different channels |
 | Very low packet rate | move boards closer; check the transmitter's send interval in its config |
 | Garbled lines | lower the baud rate in both firmware and `--baud` |
+| Board shows error code 28 in Device Manager | install the USB driver for its serial chip (step 1) |
+| esp-csi fails to build | use ESP-IDF v5.5.x, not 6.x |
 | Several MACs in metadata | the receiver hears other devices; pass `mac=` with the transmitter's MAC |
 
 ## 7. Share results
