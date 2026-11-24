@@ -4,9 +4,12 @@ A local web page for the ESP32 receiver: the motion baseline, a few labelled est
 recording. The server listens on `127.0.0.1` only.
 
 ```powershell
-python tools/live_dashboard/server.py --port COM5     # real receiver board
-python tools/live_dashboard/server.py --demo          # simulated packets, labelled as such
+python tools/live_dashboard/server.py --rx COM5 --tx COM6   # receiver, sender
+python tools/live_dashboard/server.py                       # auto-detect the port printing CSI_DATA
+python tools/live_dashboard/server.py --demo                # simulated packets, labelled as such
 ```
+
+`--port` is the old name for `--rx` and still works. `--tx` is stored and shown; that port is not opened.
 
 Open http://127.0.0.1:8765.
 

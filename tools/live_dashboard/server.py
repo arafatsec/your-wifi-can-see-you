@@ -1,6 +1,8 @@
 """Live CSI dashboard: reads the ESP32 receiver over USB serial and serves a local web page.
 
-    python tools/live_dashboard/server.py --port COM5          # real boards
+    python tools/live_dashboard/server.py --rx COM5 --tx COM6  # Windows: receiver, sender
+    python tools/live_dashboard/server.py                      # auto-detect the port printing CSI_DATA
+    python tools/live_dashboard/server.py --port COM5          # --port is the old name for --rx
     python tools/live_dashboard/server.py --demo               # simulated data, no hardware
 
 Then open http://127.0.0.1:8765. Only listens on this computer (127.0.0.1).
@@ -26,6 +28,7 @@ sys.path.insert(0, str(REPO))
 
 from src.csi.live import LABELS, LiveProcessor, Recorder  # noqa: E402
 from src.csi.loaders.esp32 import CSILineParser  # noqa: E402
+from src.csi.ports import list_serial_ports, listen_for_csi, open_serial_quiet, resolve_link_ports  # noqa: E402
 from src.models.pose import load_pose_model  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -44,6 +47,7 @@ class App:
         self.rec = Recorder(REPO / args.out)
         self.parser = CSILineParser()
         self.source = {"mode": "demo" if args.demo else "serial", "port": args.port, "baud": args.baud,
+                       "tx": getattr(args, "tx", None), "ports_from": getattr(args, "ports_from", None),
                        "connected": False, "error": None, "lines": 0}
         self.stop = threading.Event()
         # separate settings so trying the demo never changes the real boards' calibration
@@ -295,6 +299,22 @@ def make_handler(app: App):
     return Handler
 
 
+def _select_ports(args) -> None:
+    """Set args.port (receiver), args.tx, and args.ports_from. Opens ports only while listening for CSI_DATA."""
+    ports = list_serial_ports()
+
+    def probe(device: str) -> bool:
+        return listen_for_csi(device, args.baud, 1.0, open_serial_quiet)
+
+    chosen = resolve_link_ports(
+        rx=args.rx, tx=args.tx, legacy_port=args.port, ports=ports, probe=probe,
+    )
+    args.port = chosen.rx
+    args.tx = chosen.tx
+    args.ports_from = chosen.how
+    print(chosen.detail, flush=True)
+
+
 def _save_after_calibration(app: App):
     while app.proc._calib is not None and not app.stop.is_set():
         time.sleep(0.2)
@@ -303,7 +323,9 @@ def _save_after_calibration(app: App):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--port", default="COM5", help="receiver board serial port")
+    ap.add_argument("--rx", default=None, help="receiver COM port (csi_recv), e.g. COM5. Omit to auto-detect")
+    ap.add_argument("--tx", default=None, help="sender COM port (csi_send), e.g. COM6. Named in the UI, not opened")
+    ap.add_argument("--port", default=None, help="same as --rx (older name)")
     ap.add_argument("--baud", type=int, default=921600)
     ap.add_argument("--http-port", type=int, default=8765)
     ap.add_argument("--demo", action="store_true", help="simulated data instead of a board")
@@ -314,6 +336,11 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     try:
+        if not args.demo:
+            _select_ports(args)
+        else:
+            args.tx = args.tx
+            args.ports_from = None
         app = App(args)
     except (ValueError, ImportError) as exc:
         ap.error(str(exc))

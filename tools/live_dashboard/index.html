@@ -464,6 +464,7 @@ function render() {
   pills.push(src.connected
     ? pill([tn("Receiver "), bold(port), tn(" connected")], "ok")
     : pill([tn("Receiver "), bold(port), tn(" not connected")], "bad"));
+  if (src.mode !== "demo" && src.tx) pills.push(pill([tn("TX port "), bold(src.tx)]));
   const mac = Object.keys(S.senders || {})[0];
   if (age == null) pills.push(pill([tn("Sender: no packets yet")], "warn"));
   else if (age > 2) pills.push(pill([tn("Sender silent " + age.toFixed(0) + " s")], "bad"));

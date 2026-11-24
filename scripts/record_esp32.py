@@ -1,10 +1,12 @@
 """Record CSI from an ESP32 receiver board over USB serial.
 
-Example (Windows):
-    python scripts/record_esp32.py --port COM5 --label walking --seconds 60 --consent
+Example (Windows, receiver on COM5 and sender on COM6):
+    python scripts/record_esp32.py --rx COM5 --tx COM6 --label walking --seconds 60 --consent
+
+Omit --rx to use whichever port is printing CSI_DATA. --port is the old name for --rx.
 
 Example (Linux/macOS):
-    python scripts/record_esp32.py --port /dev/ttyUSB0 --label empty --seconds 60 --consent
+    python scripts/record_esp32.py --rx /dev/ttyUSB0 --label empty --seconds 60 --consent
 
 Writes data/recordings/<date>_<label>_<n>.csv (data/ is git-ignored) plus a small .json sidecar
 with the session details. Only lines starting with CSI_DATA (and the header row) are kept.
@@ -52,7 +54,9 @@ def next_path(out_dir: Path, label: str) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--port", help="serial port, e.g. COM5 or /dev/ttyUSB0")
+    ap.add_argument("--rx", help="receiver COM port (csi_recv). Omit to auto-detect the port printing CSI_DATA")
+    ap.add_argument("--tx", help="sender COM port (csi_send). Stored in the sidecar; the port is not opened")
+    ap.add_argument("--port", help="same as --rx (older name), e.g. COM5 or /dev/ttyUSB0")
     ap.add_argument("--baud", type=int, default=921600, help="must match the firmware (default 921600)")
     ap.add_argument("--label", choices=LABELS, help="what is happening in the room")
     ap.add_argument("--seconds", type=float, default=60.0)
@@ -73,12 +77,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_ports:
         list_ports()
         return 0
-    if not args.port or not args.label:
-        ap.error("--port and --label are required (use --list-ports to find the port)")
+    if not args.label:
+        ap.error("--label is required (use --list-ports to see COM ports)")
     if not args.consent:
         ap.error("add --consent to confirm everyone in the room has agreed to be recorded (see ETHICS.md)")
     if args.seconds <= 0:
         ap.error("--seconds must be positive")
+
+    repo = Path(__file__).resolve().parents[1]
+    if str(repo) not in sys.path:
+        sys.path.insert(0, str(repo))
+    from src.csi.ports import list_serial_ports, listen_for_csi, open_serial_quiet, resolve_link_ports
+    try:
+        chosen = resolve_link_ports(
+            rx=args.rx, tx=args.tx, legacy_port=args.port, ports=list_serial_ports(),
+            probe=lambda device: listen_for_csi(device, args.baud, 1.0, open_serial_quiet),
+        )
+    except ValueError as exc:
+        ap.error(str(exc))
+    print(chosen.detail)
+    args.port = chosen.rx
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -115,7 +133,8 @@ def main(argv: list[str] | None = None) -> int:
     rate = recording_rate(kept, elapsed)
     meta = {"label": args.label, "started": started, "seconds_requested": args.seconds,
             "seconds_recorded": round(elapsed, 1), "packets": kept,
-            "packets_per_second": round(rate, 1), "port": args.port, "baud": args.baud,
+            "packets_per_second": round(rate, 1), "port": args.port, "rx_port": chosen.rx,
+            "tx_port": chosen.tx, "ports_from": chosen.how, "baud": args.baud,
             "room": args.room, "consent": True}
     path.with_suffix(".json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     print(f"Done: {kept} packets (~{rate:.0f} per second) -> {path}")
