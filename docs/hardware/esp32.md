@@ -16,7 +16,7 @@ CSI of every packet over USB to your laptop.
 |---|---|---|
 | Antennas | 1 TX × 1 RX | 3 TX × 3 RX |
 | Subcarriers | ~52 usable (20 MHz, L-LTF) | 30 |
-| Packet rate | ~100+ per second | ~100 per second |
+| Packet rate | ~70/s at the 40 MHz default, ~90/s with L-LTF only (measured) | ~100 per second |
 | Good for | presence, motion, activity, breathing experiments | dense body pose |
 
 Start with presence and motion detection (roadmap phase 2.5). Full pose needs more antennas.
@@ -112,8 +112,10 @@ packet, RSSI about -36 dBm.
 python tools/live_dashboard/server.py --port COM5
 ```
 
-Open http://127.0.0.1:8765 for the live motion score, waterfall, profiles and recording
-controls. See [tools/live_dashboard/README.md](../../tools/live_dashboard/README.md).
+Open http://127.0.0.1:8765. The page shows the motion score, the CSI heatmap, and
+recording controls, plus estimates (person count, breathing, static-multipath change) that
+are labelled as estimates. The body figure is an animation until a model is plugged in.
+See [tools/live_dashboard/README.md](../../tools/live_dashboard/README.md).
 The dashboard and `record_esp32.py` both need the receiver's port, so run one at a time.
 
 ## 4. Recording protocol

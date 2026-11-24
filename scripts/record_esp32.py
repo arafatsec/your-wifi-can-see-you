@@ -32,6 +32,16 @@ def list_ports() -> None:
         print(f"{p.device}\t{p.description}")
 
 
+def recording_rate(kept: int, elapsed_s: float) -> float:
+    """Packets per second over the time the serial port was actually open.
+
+    Using the requested duration under-counts a session stopped early with Ctrl+C.
+    """
+    if elapsed_s <= 0:
+        return 0.0
+    return kept / elapsed_s
+
+
 def next_path(out_dir: Path, label: str) -> Path:
     day = datetime.now().strftime("%Y-%m-%d")
     n = 1
@@ -67,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--port and --label are required (use --list-ports to find the port)")
     if not args.consent:
         ap.error("add --consent to confirm everyone in the room has agreed to be recorded (see ETHICS.md)")
+    if args.seconds <= 0:
+        ap.error("--seconds must be positive")
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -74,7 +86,8 @@ def main(argv: list[str] | None = None) -> int:
 
     kept = 0
     started = datetime.now().isoformat(timespec="seconds")
-    with serial.Serial(args.port, args.baud, timeout=1) as ser, open(path, "w", encoding="utf-8") as f:
+    t_begin = time.monotonic()
+    with serial.Serial(args.port, args.baud, timeout=1) as ser, open(path, "x", encoding="utf-8") as f:
         ser.reset_input_buffer()
         if not args.no_reset:
             # Pulse EN through the board's auto-reset circuit. esp-csi's csi_recv prints its
@@ -98,10 +111,13 @@ def main(argv: list[str] | None = None) -> int:
         except KeyboardInterrupt:
             print("Stopped early.")
 
+    elapsed = time.monotonic() - t_begin
+    rate = recording_rate(kept, elapsed)
     meta = {"label": args.label, "started": started, "seconds_requested": args.seconds,
-            "packets": kept, "port": args.port, "baud": args.baud, "room": args.room, "consent": True}
+            "seconds_recorded": round(elapsed, 1), "packets": kept,
+            "packets_per_second": round(rate, 1), "port": args.port, "baud": args.baud,
+            "room": args.room, "consent": True}
     path.with_suffix(".json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    rate = kept / args.seconds if args.seconds else 0
     print(f"Done: {kept} packets (~{rate:.0f} per second) -> {path}")
     if kept == 0:
         print("No CSI lines received. Check the baud rate, that the receiver firmware prints CSI_DATA, "

@@ -101,7 +101,58 @@ def test_snapshot_rows_are_incremental_and_capped():
     feed(p, 5, 2000.0, lambda i: 1.0, rng)
     s2 = p.snapshot(since_seq=s1["seq"])
     assert len(s2["rows"]) == 5
-    json.dumps(s2)  # must be JSON serialisable for the browser
+    raw = json.dumps(s2)  # must be JSON serialisable for the browser; NaN/Infinity are not
+    assert "NaN" not in raw and "Infinity" not in raw
+    assert s2["occupancy"]["validated"] is False
+    assert s2["pose"]["placeholder"] is True
+    assert s2["pose"]["message"] == "no trained model - demo/animated placeholder"
+    assert "not a speed" in s2["spectrum"]["note"]
+    assert s2["static"]["note"]
+    assert s2["quality"]["rssi_band"] in {"strong", "fair", "weak", "unknown"}
+
+
+def test_presence_hysteresis_does_not_chatter_on_the_threshold():
+    p = LiveProcessor(threshold=0.05)
+    assert p._latch_presence(0.06) is True
+    assert p._latch_presence(0.048) is True  # still above 85% of the threshold
+    assert not any(ev["kind"] == "presence" for ev in p.events)
+    assert p._latch_presence(0.03) is False
+    assert any("under" in ev["message"] for ev in p.events)
+
+
+def test_nonfinite_threshold_is_rejected():
+    p = LiveProcessor()
+    with pytest.raises(ValueError):
+        p.set_threshold(float("nan"))
+    with pytest.raises(ValueError):
+        p.set_threshold(-1)
+
+
+def test_calibration_stores_an_empty_room_profile_and_a_match_reads_low():
+    rng = np.random.default_rng(2)
+    p = LiveProcessor()
+    p.start_calibration(seconds=10)
+    p._calib["end"] = 2000.0
+    t = 1000.0
+    for _ in range(20):
+        t = feed(p, 10, t, lambda i: 1.0, rng)
+        p.tick(now=t)
+    p.tick(now=2000.5)
+    assert p.calibration["ok"]
+    assert len(p.baseline_profile) == len(K_USED)
+    p._features_at = -1e9
+    p.tick(now=t)  # the finishing tick is after the packets; score the shape against them
+    snap = p.snapshot()
+    assert snap["static"]["has_baseline"] is True
+    assert snap["static"]["change"] < 0.05
+
+
+def test_occupancy_stays_zero_for_a_still_window():
+    rng = np.random.default_rng(1)
+    p = LiveProcessor()
+    t = feed(p, 150, 1000.0, lambda i: 1.0, rng)
+    p.tick(now=t)
+    assert p.snapshot()["occupancy"]["estimate"] == "0"
 
 
 def test_bad_packets_counted():

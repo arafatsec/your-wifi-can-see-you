@@ -31,15 +31,16 @@ We only list what exists and is tested. No measured result is claimed until it c
 | Component | Status |
 |---|---|
 | `CSIData` standard format (`src/csi/types.py`) | ✅ Implemented, tested |
-| Phase sanitization (`src/csi/sanitize.py`) | ✅ Implemented, tested |
+| Phase sanitization (`src/csi/sanitize.py`) | ✅ Implemented, tested. Linear trend is removed before the median filter |
 | Synthetic multipath generator (`src/csi/synthetic.py`) | ✅ For tests only, output labelled `synthetic=True` |
 | ESP32 CSI loader (`src/csi/loaders/esp32.py`) | ✅ Verified on real ESP32 boards running esp-csi ([guide](docs/hardware/esp32.md)) |
 | ESP32 recording script (`scripts/record_esp32.py`) | 🧪 Board connection verified; first labelled recording session not yet made |
 | ESP32 firmware setup (`scripts/flash_esp32_boards.ps1`) | ✅ Configures, builds and flashes both boards; verified on real boards |
-| Live dashboard (`tools/live_dashboard/`) | ✅ Runs against real boards; demo mode without hardware |
+| Live dashboard (`tools/live_dashboard/`) | ✅ Local page (127.0.0.1). Demo mode is synthetic and labelled. Real-board path is the same UI |
+| Motion score (phase 2.5 baseline) | 🧪 Gain-normalised amplitude variation, empty-room threshold. Accuracy not measured on labelled data |
+| Fluctuation spectrum, breathing, person count, static-shape change | 🧪 Estimates in the dashboard, each labelled as such. Not validated |
+| Pose model interface (`src/models/`) | 🧪 Interface only. No weights. The figure is an animation until a trained model is plugged in |
 | Loaders for Intel 5300 / Nexmon | ⏳ Not started ([help wanted](https://github.com/arafatsec/your-wifi-can-see-you/issues/6)) |
-| Presence / motion detection | 🧪 Baseline motion score live in the dashboard; accuracy not yet measured on labelled data |
-| Pose / DensePose model | ⏳ Planned, no trained model yet |
 | Real-world accuracy numbers | ❌ None yet |
 
 ## 🗂️ Repository layout
@@ -92,11 +93,18 @@ Then read [`docs/background.md`](docs/background.md) and pick something from the
 
 ## 🔗 Related projects
 
-- [ruvnet/wifi-densepose](https://github.com/ruvnet/wifi-densepose) (also re-uploaded as
-  [davidakpele/wifi-densepose](https://github.com/davidakpele/wifi-densepose)): a large system
-  with API, deployment and UI code. As of our review (Nov 2026), its CSI capture returns random
-  placeholder data, and it has no training code, dataset or trained weights. It's useful as a
-  software-architecture reference, not as a working pose estimator.
+A longer, licence-checked pass is in [`docs/research/open-source-landscape.md`](docs/research/open-source-landscape.md).
+Short version:
+
+- [ruvnet/RuView](https://github.com/ruvnet/RuView) (the project formerly published as wifi-densepose).
+  MIT. Their own README now separates three things: an MM-Fi benchmark pose model, a presence
+  encoder, and an on-device pose path they describe as a stub (PCK@20 about 3%, runtime
+  confidence 0). An earlier audit found the Python CSI path returning random placeholders.
+  We did not copy code or repeat their accuracy numbers. The landscape note has the citations.
+- [espressif/esp-csi](https://github.com/espressif/esp-csi) (Apache-2.0) is the firmware these
+  boards run. [ESPectre](https://github.com/francescopace/espectre) (GPL-3.0) is the strongest
+  maintained ESP32 motion firmware we found; we did not copy it. [SenseFi](https://github.com/xyanchen/WiFi-CSI-Sensing-Benchmark)
+  (MIT code) is the model benchmark to use once there is a dataset.
 
 Know a project with real, reproducible results? Please add it.
 

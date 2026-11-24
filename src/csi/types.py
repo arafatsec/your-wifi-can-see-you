@@ -47,8 +47,8 @@ class CSIData:
             raise ValueError(f"subcarrier_freqs must have shape ({s},), got {self.subcarrier_freqs.shape}")
         if t > 1 and np.any(np.diff(self.timestamps) < 0):
             raise ValueError("timestamps must be non-decreasing")
-        if self.synthetic and self.source != "synthetic":
-            raise ValueError("synthetic data must use source='synthetic'")
+        if self.synthetic != (self.source == "synthetic"):
+            raise ValueError("synthetic data must use source='synthetic' and synthetic=True")
 
     @property
     def amplitude(self) -> np.ndarray:

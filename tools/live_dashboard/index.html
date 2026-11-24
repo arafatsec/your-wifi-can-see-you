@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WiFi Sensing Live</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b7a75'/%3E%3C/svg%3E">
 <style>
-/* Instrument panel: one column on phones, a 12-col grid on desktop; quiet surfaces, one signal accent. */
+/* Instrument panel. One accent, no decorative gradients. Estimates are marked in amber. */
 :root {
   --bg: #f4f6f8; --panel: #ffffff; --line: #dde3ea; --fg: #17202a; --muted: #5d6b7a;
-  --accent: #0b7a75; --accent-soft: #d6efed; --warn: #b26a00; --bad: #c0392b; --ok: #1e8a4c;
+  --accent: #0b7a75; --accent-soft: #d6efed; --warn: #8a4b08; --bad: #c0392b; --ok: #1e8a4c;
   --grid: #e7ecf1; --thr: #c0392b;
   --mono: ui-monospace, "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace;
   --sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -16,12 +17,12 @@
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0f1419; --panel: #171e26; --line: #26313d; --fg: #e3e9ef; --muted: #93a2b1;
-    --accent: #3cc7bd; --accent-soft: #123a38; --warn: #f0a83a; --bad: #ff6b5e; --ok: #4cc47e;
+    --accent: #3cc7bd; --accent-soft: #123a38; --warn: #e0a15a; --bad: #ff6b5e; --ok: #4cc47e;
     --grid: #1f2a35; --thr: #ff6b5e; color-scheme: dark; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
-.wrap { max-width: 1280px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-left)) 40px; display: grid; gap: 14px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-left)) 48px; display: grid; gap: 14px; }
 header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
 h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
 h1 small { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 6px; }
@@ -30,21 +31,22 @@ h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .04em; 
 .pill { font: 12px var(--mono); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; }
 .pill b { font-weight: 600; }
 .pill.ok { border-color: var(--ok); color: var(--ok); } .pill.warn { border-color: var(--warn); color: var(--warn); } .pill.bad { border-color: var(--bad); color: var(--bad); }
-.pill.demo { background: var(--warn); color: #fff; border-color: var(--warn); }
+.pill.demo { background: #8a4b08; color: #fff; border-color: #8a4b08; }
 .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
-.s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; } .s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: span 12; }
-@media (max-width: 900px) { .s4, .s5, .s6, .s7, .s8 { grid-column: span 12; } }
+.s3 { grid-column: span 3; } .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; }
+.s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: span 12; }
+@media (max-width: 980px) { .s3, .s4, .s5, .s6, .s7, .s8 { grid-column: span 12; } }
 canvas { display: block; width: 100%; }
-.presence { display: grid; gap: 10px; align-content: start; }
-.state { font-size: 34px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+.presence { display: grid; gap: 8px; align-content: start; }
+.state { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
 .state.on { color: var(--bad); } .state.off { color: var(--ok); } .state.na { color: var(--muted); }
 .big { font: 600 26px var(--mono); font-variant-numeric: tabular-nums; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; }
 .kv span:nth-child(odd) { color: var(--muted); }
 .kv span:nth-child(even) { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .meter { height: 10px; border-radius: 5px; background: var(--grid); position: relative; overflow: hidden; }
-.meter i { position: absolute; inset: 0 auto 0 0; background: var(--accent); width: 0; transition: width .15s; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--accent); width: 0; }
 .meter u { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--thr); }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 button { font: inherit; padding: 6px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
@@ -57,17 +59,27 @@ input, select { font: inherit; padding: 5px 8px; border-radius: 7px; border: 1px
 label { font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
 label.check { display: flex; gap: 8px; align-items: flex-start; color: var(--fg); }
 .muted { color: var(--muted); font-size: 12.5px; }
+.disclaimer { color: var(--warn); font-size: 12.5px; margin: 8px 0 0; font-weight: 650; }
 .err { color: var(--bad); font-size: 13px; min-height: 1em; }
 table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th { color: var(--muted); font-weight: 600; }
 td.n { font-family: var(--mono); text-align: right; }
 .tw { overflow-x: auto; }
-.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); align-items: center; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); align-items: center; flex-wrap: wrap; }
 .legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 .ramp { height: 8px; width: 140px; border-radius: 4px; }
-#banner { display: none; background: var(--bad); color: #fff; padding: 8px 12px; border-radius: 8px; }
-footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
+.banner-demo, #banner { display: none; padding: 8px 12px; border-radius: 8px; }
+.banner-demo { background: #8a4b08; color: #fff; font-weight: 650; }
+#banner { background: var(--bad); color: #fff; }
+.placeholder-banner { border: 1px dashed var(--warn); color: var(--warn); padding: 8px 10px; border-radius: 8px; font-weight: 700; margin: 0 0 8px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.room { width: 100%; height: 88px; color: var(--fg); }
+.log { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; font: 12px/1.4 var(--mono); }
+.log li { padding: 4px 0; border-bottom: 1px solid var(--line); }
+.log b { color: var(--muted); font-weight: 600; }
+footer { color: var(--muted); font-size: 12.5px; max-width: 88ch; }
 </style>
 </head>
 <body>
@@ -76,64 +88,146 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
     <h1>WiFi Sensing Live <small>Your WiFi Can See You · ESP32 CSI</small></h1>
     <div class="pills" id="pills"></div>
   </header>
+  <div id="demoBanner" class="banner-demo">Synthetic demo. These packets are simulated, not measured on a board. Every number below is from that simulation.</div>
   <div id="banner">Lost connection to the dashboard server. Is <code>server.py</code> still running?</div>
 
   <div class="grid">
-    <section class="card s4 presence" aria-live="polite">
+    <section class="card s3 presence" aria-live="polite">
       <h2>Room</h2>
       <div class="state na" id="state">Waiting for data</div>
       <div><span class="muted">Motion score</span><div class="big" id="motion">—</div></div>
-      <div class="meter" title="Motion score against the threshold"><i id="meterFill"></i><u id="meterThr"></u></div>
+      <div class="meter" title="Motion score against the empty-room threshold"><i id="meterFill"></i><u id="meterThr"></u></div>
       <div class="kv">
         <span>Threshold</span><span id="thrVal">—</span>
         <span>Calibration</span><span id="calibInfo">not calibrated</span>
       </div>
       <label for="thr">Adjust threshold
-        <input id="thr" type="range" min="0.005" max="0.4" step="0.001" value="0.08">
+        <input id="thr" type="range" min="0.005" max="1" step="0.001" value="0.06">
       </label>
-      <div class="row">
-        <button id="calib" class="primary">Calibrate empty room (10 s)</button>
+      <div class="row"><button id="calib" class="primary">Calibrate empty room (10 s)</button></div>
+      <p class="muted">Leave the space between the boards empty while calibrating. The threshold is the room's own noise. Fans, pets and curtains raise the score too. This is the phase-2.5 baseline, not a trained detector.</p>
+    </section>
+
+    <section class="card s3 presence" aria-live="polite">
+      <h2>People</h2>
+      <div class="state na" id="occ">—</div>
+      <p class="disclaimer">Estimate, not yet validated.</p>
+      <p class="muted" id="occReason">Waiting for a motion score.</p>
+      <p class="muted">A single link cannot separate people. "2+" is only "the score is high", and one person moving quickly does that too.</p>
+    </section>
+
+    <section class="card s3 presence" aria-live="polite">
+      <h2>Breathing</h2>
+      <div class="big" id="breath">—</div>
+      <p class="disclaimer" id="breathFlag">Not a medical measurement.</p>
+      <p class="muted" id="breathReason">Needs about 20 seconds of a still room.</p>
+    </section>
+
+    <section class="card s3 presence">
+      <h2>Link</h2>
+      <div class="kv">
+        <span>RSSI</span><span id="qRssi">—</span>
+        <span>Link</span><span id="qBand">—</span>
+        <span>Packets/s</span><span id="qRate">—</span>
+        <span>Bad packets</span><span id="qBad">—</span>
       </div>
-      <div class="muted">Leave the room (or stay completely still away from the line between the boards) while calibrating. The threshold is set from the room's normal noise.</div>
+      <p class="muted">RSSI and packet rate describe the radio link, not pose accuracy. The sender is set up for about 100 packets per second.</p>
     </section>
 
     <section class="card s8">
       <h2>Motion score · last 30 s</h2>
-      <canvas id="cMotion" height="230" role="img" aria-label="Motion score over the last 30 seconds with threshold line"></canvas>
+      <canvas id="cMotion" height="220" role="img" aria-label="Motion score over the last 30 seconds with the threshold"></canvas>
       <div class="legend"><span><i style="background:var(--accent)"></i>motion score</span><span><i style="background:var(--thr)"></i>threshold</span></div>
     </section>
 
+    <section class="card s4">
+      <h2>Activity · last 3 min</h2>
+      <canvas id="cActivity" height="160" role="img" aria-label="Timeline of still, motion, and no signal"></canvas>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--ok)"></i>still</span>
+        <span><i class="swatch" style="background:var(--bad)"></i>motion</span>
+        <span><i class="swatch" style="background:var(--muted)"></i>no signal</span>
+      </div>
+      <p class="muted">Still and motion are the same threshold as the room panel. Sitting and standing are not separated.</p>
+    </section>
+
     <section class="card s12">
-      <h2>Signal strength per subcarrier · live waterfall</h2>
-      <canvas id="cWater" height="240" role="img" aria-label="Waterfall of amplitude per subcarrier over the last seconds"></canvas>
-      <div class="legend"><span>time runs left → right (newest at right) · rows are subcarriers −26 … 26</span>
+      <h2>Subcarrier heatmap · gain-normalised amplitude</h2>
+      <canvas id="cWater" height="240" role="img" aria-label="Heatmap of amplitude per subcarrier, newest column on the right"></canvas>
+      <div class="legend"><span>time runs left → right · rows are the kept L-LTF subcarriers</span>
         <span>low <canvas class="ramp" id="ramp" width="140" height="8"></canvas> high</span></div>
     </section>
 
-    <section class="card s6">
-      <h2>Amplitude profile · now</h2>
-      <canvas id="cProfile" height="200" role="img" aria-label="Current amplitude across subcarriers"></canvas>
+    <section class="card s4">
+      <h2>Amplitude · now</h2>
+      <canvas id="cProfile" height="190" role="img" aria-label="Current amplitude across subcarriers"></canvas>
     </section>
+    <section class="card s4">
+      <h2>Phase after cleanup</h2>
+      <canvas id="cPhase" height="190" role="img" aria-label="Sanitized phase of the last packet"></canvas>
+    </section>
+    <section class="card s4">
+      <h2>Variation per subcarrier</h2>
+      <canvas id="cStd" height="190" role="img" aria-label="Standard deviation of each subcarrier over the last second"></canvas>
+    </section>
+
     <section class="card s6">
-      <h2>Phase after cleanup · last packet</h2>
-      <canvas id="cPhase" height="200" role="img" aria-label="Sanitized phase across subcarriers"></canvas>
+      <h2>Fluctuation spectrum</h2>
+      <canvas id="cSpec" height="190" role="img" aria-label="Doppler-like amplitude spectrum, not a speed"></canvas>
+      <p class="muted" id="specNote">Temporal fluctuation of amplitude. A Doppler-like proxy, not a speed in m/s.</p>
+    </section>
+
+    <section class="card s6">
+      <h2>Static multipath</h2>
+      <svg class="room" viewBox="0 0 320 90" role="img" aria-label="Link schematic. Objects are not recognised.">
+        <rect x="18" y="14" width="284" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="36" cy="40" r="5" fill="currentColor"/>
+        <circle cx="284" cy="40" r="5" fill="currentColor"/>
+        <text x="24" y="80" font-size="12" fill="currentColor">TX</text>
+        <text x="270" y="80" font-size="12" fill="currentColor">RX</text>
+        <text id="roomMark" x="160" y="44" text-anchor="middle" font-size="13" fill="currentColor">no baseline</text>
+      </svg>
+      <canvas id="cStatic" height="150" role="img" aria-label="Empty-room amplitude shape compared with the current shape"></canvas>
+      <div class="legend"><span><i style="background:var(--muted)"></i>empty-room baseline</span><span><i style="background:var(--accent)"></i>now</span></div>
+      <p class="muted" id="staticStatus">Calibrate an empty room to store the static shape. A later change is a multipath change, not a named object.</p>
+    </section>
+
+    <section class="card s7">
+      <h2>Body figure</h2>
+      <p id="poseBanner" class="placeholder-banner">no trained model - demo/animated placeholder</p>
+      <p id="poseDetail" class="muted">The figure plays a generic idle or walk cycle from the motion score. Limb positions are not estimated from CSI. A trained model, passed to the server with <code>--pose-model</code>, replaces this animation.</p>
+      <div class="split">
+        <div><div class="muted">Front</div><canvas id="cBody" height="260" role="img" aria-label="Front view of the body figure"></canvas></div>
+        <div><div class="muted">Side</div><canvas id="cBodySide" height="260" role="img" aria-label="Side view of the body figure"></canvas></div>
+      </div>
+    </section>
+
+    <section class="card s5">
+      <h2>Event log</h2>
+      <ol class="log" id="log"><li class="muted">No events yet.</li></ol>
     </section>
 
     <section class="card s6">
       <h2>Packets per second</h2>
-      <canvas id="cRate" height="160" role="img" aria-label="Packet rate over the last 30 seconds"></canvas>
+      <canvas id="cRate" height="150" role="img" aria-label="Packet rate over the last 30 seconds"></canvas>
     </section>
     <section class="card s6">
       <h2>Signal level (RSSI)</h2>
-      <canvas id="cRssi" height="160" role="img" aria-label="RSSI in dBm over the last 30 seconds"></canvas>
+      <canvas id="cRssi" height="150" role="img" aria-label="RSSI in dBm over the last 30 seconds"></canvas>
     </section>
 
     <section class="card s5">
       <h2>Record a labelled session</h2>
       <div style="display:grid; gap:10px">
+        <p class="muted" id="recDemo" hidden>Demo mode: the file will be synthetic. It is not a real-room recording.</p>
         <div class="row">
           <label for="label">Label <select id="label"></select></label>
           <label for="secs">Seconds <input id="secs" type="number" min="1" max="3600" value="60" style="width:90px"></label>
+        </div>
+        <div class="row">
+          <button type="button" id="s30">30 s</button>
+          <button type="button" id="s60">60 s</button>
+          <button type="button" id="s120">120 s</button>
         </div>
         <label for="room">Room / setup notes <input id="room" type="text" maxlength="200" placeholder="e.g. bedroom, boards 4 m apart"></label>
         <label class="check"><input id="consent" type="checkbox"> Everyone in the room knows about this recording and agreed to it.</label>
@@ -143,22 +237,22 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
           <span id="recStatus" class="muted">Not recording</span>
         </div>
         <div class="err" id="recErr"></div>
-        <div class="muted">Files go to <code>data/recordings/</code> (never committed to git). See ETHICS.md.</div>
+        <p class="muted">Labels <code>empty</code>, <code>sitting</code>, <code>standing</code>, <code>walking</code> are the phase-2.5 set. Files go to <code>data/recordings/</code> and are not committed. See ETHICS.md.</p>
       </div>
     </section>
     <section class="card s7">
       <h2>Recordings</h2>
       <div class="tw"><table>
-        <thead><tr><th>File</th><th>Label</th><th>Started</th><th style="text-align:right">Packets</th><th style="text-align:right">Seconds</th><th style="text-align:right">Pkt/s</th></tr></thead>
-        <tbody id="recList"><tr><td colspan="6" class="muted">No recordings yet.</td></tr></tbody>
+        <thead><tr><th>File</th><th>Label</th><th>Source</th><th>Started</th><th style="text-align:right">Packets</th><th style="text-align:right">Seconds</th><th style="text-align:right">Pkt/s</th></tr></thead>
+        <tbody id="recList"><tr><td colspan="7" class="muted">No recordings yet.</td></tr></tbody>
       </table></div>
     </section>
   </div>
 
   <footer>
-    Motion score = average over subcarriers of (amplitude standard deviation ÷ mean) in the last second.
-    It is a simple baseline, not a trained model: fans, pets and moving curtains also raise it.
-    Data stays on this computer; the server only listens on 127.0.0.1.
+    The server listens only on 127.0.0.1. Motion presence is a calibrated amplitude score.
+    Person count, breathing, the fluctuation spectrum and the static-multipath flag are estimates and are marked as such.
+    The body figure is an animation until a trained model is plugged in. Nothing here is a measured pose accuracy.
   </footer>
 </div>
 
@@ -166,12 +260,12 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch; }
 "use strict";
 const $ = (id) => document.getElementById(id);
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-let S = null;              // latest snapshot
-let rows = [];             // waterfall rows (arrays of amplitudes)
+let S = null;
+let rows = [];
 const MAX_ROWS = 500;
 let lastMsg = 0;
+const BONES = [[5,6],[5,7],[7,9],[6,8],[8,10],[11,12],[5,11],[6,12],[11,13],[13,15],[12,14],[14,16]];
 
-// ---- colour ramp (viridis-like) ----------------------------------------------------------
 const STOPS = [[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
 const LUT = Array.from({length: 256}, (_, i) => {
   const t = i / 255 * (STOPS.length - 1), a = Math.floor(t), b = Math.min(a + 1, STOPS.length - 1), f = t - a;
@@ -179,101 +273,211 @@ const LUT = Array.from({length: 256}, (_, i) => {
 });
 (function drawRamp() {
   const c = $("ramp"), g = c.getContext("2d");
-  for (let x = 0; x < c.width; x++) { const [r, gg, b] = LUT[Math.round(x / (c.width - 1) * 255)]; g.fillStyle = `rgb(${r},${gg},${b})`; g.fillRect(x, 0, 1, c.height); }
+  for (let x = 0; x < c.width; x++) {
+    const [r, gg, b] = LUT[Math.round(x / (c.width - 1) * 255)];
+    g.fillStyle = `rgb(${r},${gg},${b})`; g.fillRect(x, 0, 1, c.height);
+  }
 })();
 
-// ---- generic line chart ------------------------------------------------------------------
 function setup(canvas) {
-  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.height / (canvas._dpr || 1);
+  const dpr = window.devicePixelRatio || 1;
   if (!canvas._h) canvas._h = canvas.height;
   const H = canvas._h;
-  if (canvas.width !== Math.round(w * dpr) || canvas._dpr !== dpr) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(H * dpr); canvas.style.height = H + "px"; canvas._dpr = dpr; }
-  const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, H);
+  const w = canvas.clientWidth || 300;
+  if (canvas.width !== Math.round(w * dpr) || canvas._dpr !== dpr) {
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.height = H + "px"; canvas._dpr = dpr;
+  }
+  const g = canvas.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, H);
   return { g, w, h: H };
 }
 function niceTicks(lo, hi, n) {
-  if (!isFinite(lo) || !isFinite(hi) || lo === hi) { hi = lo + 1; }
+  if (!isFinite(lo) || !isFinite(hi) || lo === hi) hi = lo + 1;
   const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
   const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= n) || mag * 10;
-  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
   return out;
+}
+function finiteMax(arr, floor) {
+  let m = floor;
+  for (const v of arr || []) if (v != null && isFinite(v) && v > m) m = v;
+  return m;
 }
 function lineChart(canvas, o) {
   const { g, w, h } = setup(canvas);
-  const font = `11px ${css("--mono")}`; g.font = font;
+  g.font = `11px ${css("--mono")}`;
   const muted = css("--muted"), grid = css("--grid");
-  const allY = o.series.flatMap(s => s.y.filter(v => v != null && isFinite(v)));
+  const allY = o.series.flatMap(s => (s.y || []).filter(v => v != null && isFinite(v)));
   if (o.hline != null) allY.push(o.hline);
-  let yMin = o.yMin ?? Math.min(...allY), yMax = o.yMax ?? Math.max(...allY);
-  if (!allY.length) { yMin = 0; yMax = 1; }
-  if (yMax - yMin < 1e-9) { yMax += 1; yMin -= o.yMin != null ? 0 : 1; }
-  const pad = (yMax - yMin) * 0.08; if (o.yMin == null) yMin -= pad; if (o.yMax == null) yMax += pad;
-  const yt = niceTicks(yMin, yMax, 4), yfmt = o.yFmt || (v => String(v));
-  const left = Math.max(...yt.map(v => g.measureText(yfmt(v)).width)) + 10, right = 8, top = 8, bottom = 22;
-  const X = (v) => left + (v - o.xMin) / (o.xMax - o.xMin) * (w - left - right);
+  let yMin = o.yMin ?? (allY.length ? Math.min(...allY) : 0);
+  let yMax = o.yMax ?? (allY.length ? Math.max(...allY) : 1);
+  if (!allY.length && o.yMin == null) { yMin = 0; yMax = 1; }
+  if (yMax - yMin < 1e-9) { yMax += 1; if (o.yMin == null) yMin -= 1; }
+  const pad = (yMax - yMin) * 0.08;
+  if (o.yMin == null) yMin -= pad;
+  if (o.yMax == null) yMax += pad;
+  const yfmt = o.yFmt || (v => String(Math.round(v * 1000) / 1000));
+  const yt = niceTicks(yMin, yMax, 4);
+  const left = Math.max(28, ...yt.map(v => g.measureText(yfmt(v)).width)) + 10;
+  const right = 8, top = 8, bottom = 22;
+  const xSpan = (o.xMax - o.xMin) || 1;
+  const X = (v) => left + (v - o.xMin) / xSpan * (w - left - right);
   const Y = (v) => top + (1 - (v - yMin) / (yMax - yMin)) * (h - top - bottom);
   g.strokeStyle = grid; g.lineWidth = 1; g.fillStyle = muted; g.textAlign = "right"; g.textBaseline = "middle";
-  for (const v of yt) { if (v < yMin || v > yMax) continue; g.beginPath(); g.moveTo(left, Y(v)); g.lineTo(w - right, Y(v)); g.stroke(); g.fillText(yfmt(v), left - 6, Y(v)); }
-  g.textAlign = "center"; g.textBaseline = "top";
-  for (const v of niceTicks(o.xMin, o.xMax, Math.max(3, Math.floor((w - left) / 70)))) { g.fillText((o.xFmt || String)(v), X(v), h - bottom + 6); }
-  if (o.hline != null) { g.strokeStyle = css("--thr"); g.setLineDash([5, 4]); g.beginPath(); g.moveTo(left, Y(o.hline)); g.lineTo(w - right, Y(o.hline)); g.stroke(); g.setLineDash([]); }
-  for (const s of o.series) {
-    g.strokeStyle = s.color; g.lineWidth = s.width || 1.8; g.beginPath(); let pen = false, lastX = null, lastY = null;
-    for (let i = 0; i < s.x.length; i++) { const v = s.y[i]; if (v == null || !isFinite(v)) { pen = false; continue; } const px = X(s.x[i]), py = Y(v); pen ? g.lineTo(px, py) : g.moveTo(px, py); pen = true; lastX = px; lastY = py; }
-    g.stroke();
-    if (s.fillAbove != null) {  // shade where the series is above a level
-      g.fillStyle = s.fillColor; for (let i = 1; i < s.x.length; i++) { const a = s.y[i - 1], b = s.y[i]; if (a != null && b != null && (a > s.fillAbove || b > s.fillAbove)) { g.fillRect(X(s.x[i - 1]), top, Math.max(1, X(s.x[i]) - X(s.x[i - 1])), h - top - bottom); } }
-    }
-    if (lastX != null && s.dot) { g.fillStyle = s.color; g.beginPath(); g.arc(lastX, lastY, 3.5, 0, Math.PI * 2); g.fill(); }
+  for (const v of yt) {
+    if (v < yMin || v > yMax) continue;
+    g.beginPath(); g.moveTo(left, Y(v)); g.lineTo(w - right, Y(v)); g.stroke();
+    g.fillText(yfmt(v), left - 6, Y(v));
   }
-  if (o.empty) { g.fillStyle = muted; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `13px ${css("--sans")}`; g.fillText(o.empty, w / 2, h / 2); }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const v of niceTicks(o.xMin, o.xMax, Math.max(3, Math.floor((w - left) / 70)))) {
+    g.fillText((o.xFmt || String)(v), X(v), h - bottom + 6);
+  }
+  if (o.hline != null) {
+    g.strokeStyle = css("--thr"); g.setLineDash([5, 4]);
+    g.beginPath(); g.moveTo(left, Y(o.hline)); g.lineTo(w - right, Y(o.hline)); g.stroke();
+    g.setLineDash([]);
+  }
+  for (const s of o.series) {
+    if (!s.x || !s.x.length) continue;
+    g.strokeStyle = s.color; g.lineWidth = s.width || 1.8; g.beginPath();
+    let pen = false, lastX = null, lastY = null;
+    for (let i = 0; i < s.x.length; i++) {
+      const v = s.y[i];
+      if (v == null || !isFinite(v)) { pen = false; continue; }
+      const px = X(s.x[i]), py = Y(v);
+      pen ? g.lineTo(px, py) : g.moveTo(px, py);
+      pen = true; lastX = px; lastY = py;
+    }
+    g.stroke();
+    if (lastX != null && s.dot) {
+      g.fillStyle = s.color; g.beginPath(); g.arc(lastX, lastY, 3.5, 0, Math.PI * 2); g.fill();
+    }
+  }
+  if (o.empty && !allY.length) {
+    g.fillStyle = muted; g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = `13px ${css("--sans")}`; g.fillText(o.empty, w / 2, h / 2);
+  }
 }
-
-// ---- waterfall ---------------------------------------------------------------------------
 function drawWaterfall() {
   const c = $("cWater"), { g, w, h } = setup(c);
-  if (!rows.length) { g.fillStyle = css("--muted"); g.font = `13px ${css("--sans")}`; g.textAlign = "center"; g.fillText("Waiting for packets…", w / 2, h / 2); return; }
+  if (!rows.length || !S) {
+    g.fillStyle = css("--muted"); g.font = `13px ${css("--sans")}`; g.textAlign = "center";
+    g.fillText("Waiting for packets…", w / 2, h / 2); return;
+  }
   const n = rows.length, m = rows[0].length;
-  const sample = []; for (let i = 0; i < n; i += Math.max(1, Math.floor(n / 80))) for (const v of rows[i]) sample.push(v);
+  const sample = [];
+  for (let i = 0; i < n; i += Math.max(1, Math.floor(n / 80))) for (const v of rows[i]) sample.push(v);
   sample.sort((a, b) => a - b);
-  const lo = sample[Math.floor(sample.length * 0.02)], hi = sample[Math.floor(sample.length * 0.98)] || lo + 1;
+  const lo = sample[Math.floor(sample.length * 0.02)];
+  const hi = sample[Math.floor(sample.length * 0.98)] || lo + 1;
   const img = new ImageData(MAX_ROWS, m);
   const off = MAX_ROWS - n;
-  for (let x = 0; x < n; x++) { const r = rows[x]; for (let y = 0; y < m; y++) {
-    const t = Math.max(0, Math.min(255, Math.round((r[y] - lo) / (hi - lo || 1) * 255))); const [R, G, B] = LUT[t];
-    const p = ((m - 1 - y) * MAX_ROWS + off + x) * 4; img.data[p] = R; img.data[p + 1] = G; img.data[p + 2] = B; img.data[p + 3] = 255; } }
-  const tmp = c._tmp || (c._tmp = document.createElement("canvas")); tmp.width = MAX_ROWS; tmp.height = m; tmp.getContext("2d").putImageData(img, 0, 0);
-  g.imageSmoothingEnabled = false; const L = 34; g.drawImage(tmp, L, 0, w - L, h - 4);
+  for (let x = 0; x < n; x++) {
+    const r = rows[x];
+    for (let y = 0; y < m; y++) {
+      const t = Math.max(0, Math.min(255, Math.round((r[y] - lo) / (hi - lo || 1) * 255)));
+      const [R, G, B] = LUT[t];
+      const p = ((m - 1 - y) * MAX_ROWS + off + x) * 4;
+      img.data[p] = R; img.data[p + 1] = G; img.data[p + 2] = B; img.data[p + 3] = 255;
+    }
+  }
+  const tmp = c._tmp || (c._tmp = document.createElement("canvas"));
+  tmp.width = MAX_ROWS; tmp.height = m;
+  tmp.getContext("2d").putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = false;
+  const L = 34;
+  g.drawImage(tmp, L, 0, w - L, h - 4);
   g.fillStyle = css("--muted"); g.font = `11px ${css("--mono")}`; g.textAlign = "right"; g.textBaseline = "middle";
-  for (const k of [26, 13, 0, -13, -26]) { const idx = S.k.indexOf(k) >= 0 ? S.k.indexOf(k) : S.k.findIndex(v => v > k); const y = (1 - (idx + 0.5) / m) * (h - 4); g.fillText(String(k), L - 6, y); }
+  for (const k of [26, 13, -13, -26]) {
+    const idx = S.k.indexOf(k);
+    if (idx < 0) continue;
+    g.fillText(String(k), L - 6, (1 - (idx + 0.5) / m) * (h - 4));
+  }
+}
+function drawActivity() {
+  const c = $("cActivity"), { g, w, h } = setup(c);
+  const items = (S && S.activity) || [];
+  if (!items.length) {
+    g.fillStyle = css("--muted"); g.font = `13px ${css("--sans")}`; g.textAlign = "center";
+    g.fillText("Waiting for the first second…", w / 2, h / 2); return;
+  }
+  const colors = { still: css("--ok"), motion: css("--bad"), "no-signal": css("--muted"), uncertain: css("--warn") };
+  const bw = w / items.length;
+  items.forEach((it, i) => {
+    g.fillStyle = colors[it.state] || css("--muted");
+    g.fillRect(i * bw, 8, Math.max(1, bw - 1), h - 28);
+  });
+  g.fillStyle = css("--muted"); g.font = `11px ${css("--mono")}`; g.textBaseline = "bottom";
+  g.textAlign = "left"; g.fillText("older", 0, h - 2);
+  g.textAlign = "right"; g.fillText("now", w, h - 2);
+}
+function drawBody(canvas, mode) {
+  const { g, w, h } = setup(canvas);
+  const kp = S && S.pose && S.pose.keypoints;
+  g.fillStyle = css("--muted"); g.font = `12px ${css("--sans")}`; g.textAlign = "center";
+  if (!kp || !kp.length) { g.fillText("Waiting for a figure…", w / 2, h / 2); return; }
+  const pts = kp.map(p => mode === "side" ? [p[2], p[1]] : [p[0], p[1]]);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  minY = Math.min(minY, 0); maxY += 0.18;
+  const pad = 16;
+  const s = Math.min((w - 2 * pad) / (maxX - minX || 1), (h - 2 * pad) / (maxY - minY || 1));
+  const ox = pad + ((w - 2 * pad) - (maxX - minX) * s) / 2;
+  const X = (x) => ox + (x - minX) * s;
+  const Y = (y) => h - pad - (y - minY) * s;
+  g.strokeStyle = css("--line"); g.lineWidth = 1;
+  g.beginPath(); g.moveTo(12, Y(0)); g.lineTo(w - 12, Y(0)); g.stroke();
+  g.strokeStyle = css("--fg"); g.lineWidth = 5; g.lineCap = "round";
+  for (const [a, b] of BONES) {
+    g.beginPath(); g.moveTo(X(pts[a][0]), Y(pts[a][1])); g.lineTo(X(pts[b][0]), Y(pts[b][1])); g.stroke();
+  }
+  g.beginPath(); g.arc(X(pts[0][0]), Y(pts[0][1]) - 14, 11, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = css("--accent");
+  for (const p of pts) { g.beginPath(); g.arc(X(p[0]), Y(p[1]), 2.5, 0, Math.PI * 2); g.fill(); }
 }
 
-// ---- render ------------------------------------------------------------------------------
-function fmt(v, d = 3) { return v == null ? "—" : Number(v).toFixed(d); }
-function pill(text, cls = "") { const s = document.createElement("span"); s.className = "pill " + cls; s.innerHTML = text; return s; }
+function fmt(v, d = 3) { return v == null || !isFinite(Number(v)) ? "—" : Number(v).toFixed(d); }
+function tn(text) { return document.createTextNode(text); }
+function bold(text) { const e = document.createElement("b"); e.textContent = text == null ? "—" : String(text); return e; }
+function pill(parts, cls) {
+  const s = document.createElement("span");
+  s.className = "pill" + (cls ? " " + cls : "");
+  for (const p of parts) s.append(p);
+  return s;
+}
 
 function render() {
   if (!S) return;
-  const src = S.source, age = S.last_packet_age;
+  const src = S.source || {}, age = S.last_packet_age;
+  $("demoBanner").style.display = src.mode === "demo" ? "block" : "none";
+  $("recDemo").hidden = src.mode !== "demo";
   const pills = [];
-  if (src.mode === "demo") pills.push(pill("<b>DEMO</b> simulated data", "demo"));
-  pills.push(src.connected ? pill(`Receiver <b>${src.mode === "demo" ? "demo" : src.port}</b> connected`, "ok")
-                           : pill(`Receiver <b>${src.port}</b> not connected`, "bad"));
+  if (src.mode === "demo") pills.push(pill([bold("DEMO"), tn(" simulated data")], "demo"));
+  const port = src.mode === "demo" ? "demo" : (src.port || "—");
+  pills.push(src.connected
+    ? pill([tn("Receiver "), bold(port), tn(" connected")], "ok")
+    : pill([tn("Receiver "), bold(port), tn(" not connected")], "bad"));
   const mac = Object.keys(S.senders || {})[0];
-  if (age == null) pills.push(pill("Sender: no packets yet", "warn"));
-  else if (age > 2) pills.push(pill(`Sender silent ${age.toFixed(0)} s`, "bad"));
-  else pills.push(pill(`Sender <b>${mac}</b>`, "ok"));
-  pills.push(pill(`Channel <b>${S.channel ?? "—"}</b>`));
-  pills.push(pill(`<b>${S.rate ?? 0}</b> pkt/s`, (S.rate || 0) < 50 && age != null ? "warn" : ""));
-  pills.push(pill(`RSSI <b>${S.rssi ?? "—"}</b> dBm`));
-  pills.push(pill(`<b>${(S.packets_total || 0).toLocaleString()}</b> packets`));
-  if (S.recording && S.recording.active) pills.push(pill(`● REC ${S.recording.label}`, "bad"));
+  if (age == null) pills.push(pill([tn("Sender: no packets yet")], "warn"));
+  else if (age > 2) pills.push(pill([tn("Sender silent " + age.toFixed(0) + " s")], "bad"));
+  else pills.push(pill([tn("Sender "), bold(mac || "—")], "ok"));
+  pills.push(pill([tn("Channel "), bold(S.channel ?? "—")]));
+  pills.push(pill([bold(S.rate ?? 0), tn(" pkt/s")], (S.rate || 0) < 50 && age != null ? "warn" : ""));
+  pills.push(pill([tn("RSSI "), bold(S.rssi ?? "—"), tn(" dBm")]));
+  pills.push(pill([bold((S.packets_total || 0).toLocaleString()), tn(" packets")]));
+  if (S.recording && S.recording.active) pills.push(pill([tn("REC "), bold(S.recording.label)], "bad"));
   $("pills").replaceChildren(...pills);
-  if (src.error && !src.connected) $("pills").append(pill(src.error.slice(0, 80), "bad"));
+  if (src.error && !src.connected) $("pills").append(pill([tn(String(src.error).slice(0, 80))], "bad"));
 
-  // presence
   const st = $("state");
-  if (S.calibrating) { st.className = "state na"; st.textContent = `Calibrating… ${S.calibrating.remaining.toFixed(0)} s`; }
+  if (S.calibrating) { st.className = "state na"; st.textContent = "Calibrating… " + S.calibrating.remaining.toFixed(0) + " s"; }
   else if (S.motion == null || age == null || age > 2) { st.className = "state na"; st.textContent = age == null ? "Waiting for data" : "No signal"; }
   else if (S.presence) { st.className = "state on"; st.textContent = "Motion detected"; }
   else { st.className = "state off"; st.textContent = "Room still"; }
@@ -282,41 +486,105 @@ function render() {
   const scaleMax = Math.max(S.threshold * 2.5, (S.motion || 0) * 1.1, 0.02);
   $("meterFill").style.width = Math.min(100, (S.motion || 0) / scaleMax * 100) + "%";
   $("meterThr").style.left = Math.min(100, S.threshold / scaleMax * 100) + "%";
-  if (document.activeElement !== $("thr")) $("thr").value = S.threshold;
+  const thr = $("thr");
+  if (S.threshold > Number(thr.max)) thr.max = String(Math.ceil(S.threshold * 2 * 1000) / 1000);
+  if (document.activeElement !== thr) thr.value = S.threshold;
   const cal = S.calibration;
-  $("calibInfo").textContent = !cal ? "not calibrated" : cal.ok ? `room noise ${fmt(cal.mean, 4)} ± ${fmt(cal.std, 4)} (${cal.at.replace("T", " ")})` : cal.reason;
+  $("calibInfo").textContent = !cal ? "not calibrated" : cal.ok
+    ? "room noise " + fmt(cal.mean, 4) + " ± " + fmt(cal.std, 4)
+    : (cal.reason || "calibration failed");
   $("calib").disabled = !!S.calibrating;
 
-  // charts
-  const t = S.hist.t, now = t.length ? t[t.length - 1] : 0, ago = t.map(v => v - now);
+  const occ = S.occupancy || {};
+  const occEl = $("occ");
+  occEl.textContent = occ.estimate == null ? "—" : occ.estimate;
+  occEl.className = "state " + (occ.estimate == null ? "na" : occ.estimate === "0" ? "off" : "on");
+  $("occReason").textContent = occ.reason || "";
+
+  const br = S.breathing || {};
+  $("breath").textContent = br.bpm == null ? "—" : br.bpm.toFixed(1) + " / min";
+  $("breathFlag").textContent = br.reliable ? "Best-effort peak. Not a medical measurement." : "Not reliable. Not a medical measurement.";
+  $("breathReason").textContent = br.reason || "";
+
+  const q = S.quality || {};
+  $("qRssi").textContent = fmt(q.rssi_dbm, 0) + (q.rssi_dbm == null ? "" : " dBm");
+  $("qBand").textContent = q.rssi_band || "—";
+  $("qRate").textContent = fmt(q.packet_rate_hz, 0);
+  $("qBad").textContent = (q.bad_packets ?? 0) + " (" + ((q.bad_ratio || 0) * 100).toFixed(1) + "%)";
+
+  const t = (S.hist && S.hist.t) || [], now = t.length ? t[t.length - 1] : 0, ago = t.map(v => v - now);
   lineChart($("cMotion"), { xMin: -30, xMax: 0, xFmt: v => v === 0 ? "now" : v + " s", yMin: 0, hline: S.threshold, yFmt: v => v.toFixed(2),
-    series: [{ x: ago, y: S.hist.motion, color: css("--accent"), width: 2, dot: true, fillAbove: S.threshold, fillColor: "rgba(192,57,43,0.10)" }],
-    empty: S.hist.motion.some(v => v != null) ? null : "No motion data yet" });
-  lineChart($("cRate"), { xMin: -30, xMax: 0, xFmt: v => v === 0 ? "now" : v + " s", yMin: 0, yMax: Math.max(120, ...S.hist.rate), hline: 100,
+    series: [{ x: ago, y: S.hist.motion, color: css("--accent"), width: 2, dot: true }],
+    empty: (S.hist.motion || []).some(v => v != null) ? null : "No motion data yet" });
+  lineChart($("cRate"), { xMin: -30, xMax: 0, xFmt: v => v === 0 ? "now" : v + " s", yMin: 0, yMax: finiteMax(S.hist.rate, 120), hline: 100,
     series: [{ x: ago, y: S.hist.rate, color: css("--accent"), dot: true }] });
-  lineChart($("cRssi"), { xMin: -30, xMax: 0, xFmt: v => v === 0 ? "now" : v + " s", yFmt: v => v + "",
-    series: [{ x: ago, y: S.hist.rssi, color: css("--accent"), dot: true }], empty: S.hist.rssi.some(v => v != null) ? null : "No RSSI yet" });
+  lineChart($("cRssi"), { xMin: -30, xMax: 0, xFmt: v => v === 0 ? "now" : v + " s",
+    series: [{ x: ago, y: S.hist.rssi, color: css("--accent"), dot: true }],
+    empty: (S.hist.rssi || []).some(v => v != null) ? null : "No RSSI yet" });
   lineChart($("cProfile"), { xMin: -26, xMax: 26, yMin: 0, xFmt: v => "k " + v,
     series: [{ x: S.k, y: S.profile || [], color: css("--accent"), width: 2 }], empty: S.profile ? null : "Waiting for packets…" });
   lineChart($("cPhase"), { xMin: -26, xMax: 26, xFmt: v => "k " + v, yFmt: v => v.toFixed(1),
     series: [{ x: S.k, y: S.phase || [], color: css("--accent"), width: 2 }], empty: S.phase ? null : "Waiting for packets…" });
+  lineChart($("cStd"), { xMin: -26, xMax: 26, yMin: 0, xFmt: v => "k " + v,
+    series: [{ x: S.k, y: S.subcarrier_std || [], color: css("--accent"), width: 2 }],
+    empty: S.subcarrier_std ? null : "Need a second of packets" });
+  const spec = S.spectrum || { freqs: [], power: [] };
+  lineChart($("cSpec"), { xMin: 0, xMax: 10, yMin: 0, yMax: 1, xFmt: v => v.toFixed(0) + " Hz",
+    series: [{ x: spec.freqs || [], y: spec.power || [], color: css("--accent"), width: 2 }],
+    empty: (spec.power || []).some(v => v > 0) ? null : "Need about a second of packets" });
+  if (spec.note) $("specNote").textContent = spec.note + (spec.dominant_hz == null ? "" : " Dominant bin " + spec.dominant_hz + " Hz. Band share " + spec.band_fraction + ".");
+  const stat = S.static || {};
+  const series = [];
+  if (stat.baseline) series.push({ x: S.k, y: stat.baseline, color: css("--muted"), width: 1.6 });
+  if (stat.current) series.push({ x: S.k, y: stat.current, color: css("--accent"), width: 2 });
+  lineChart($("cStatic"), { xMin: -26, xMax: 26, yMin: 0, xFmt: v => "k " + v, series,
+    empty: series.length ? null : "No shape yet" });
+  $("staticStatus").textContent = (stat.status || "") + (stat.change == null ? "" : "  Change " + fmt(stat.change, 3) + ".") + (stat.note ? " " + stat.note : "");
+  $("roomMark").textContent = !stat.has_baseline ? "no baseline" : (stat.change != null && stat.change >= 0.12 && stat.status && stat.status.startsWith("static")) ? "shape changed" : "baseline stored";
   drawWaterfall();
+  drawActivity();
+  drawBody($("cBody"), "front");
+  drawBody($("cBodySide"), "side");
 
-  // recording status
+  const pose = S.pose || {};
+  $("poseBanner").textContent = pose.message || "no trained model - demo/animated placeholder";
+  $("poseDetail").hidden = pose.placeholder === false;
+  if (pose.placeholder === false) {
+    $("poseBanner").className = "placeholder-banner";
+    $("poseBanner").style.borderStyle = "solid";
+    $("poseBanner").style.color = css("--fg");
+  }
+
+  const log = $("log");
+  const events = S.events || [];
+  log.replaceChildren();
+  if (!events.length) {
+    const li = document.createElement("li"); li.className = "muted"; li.textContent = "No events yet."; log.append(li);
+  } else {
+    for (const ev of events.slice().reverse()) {
+      const li = document.createElement("li");
+      const b = document.createElement("b");
+      b.textContent = (ev.kind || "event") + "  ";
+      li.append(b, tn((ev.t != null ? ev.t + "s  " : "") + (ev.message || "")));
+      log.append(li);
+    }
+  }
+
   const r = S.recording || {};
   $("recStart").disabled = !!r.active; $("recStop").disabled = !r.active;
-  $("recStatus").textContent = r.active ? `Recording "${r.label}" · ${r.packets} packets · ${r.elapsed.toFixed(0)}${r.seconds ? " / " + r.seconds : ""} s` : "Not recording";
+  $("recStatus").textContent = r.active
+    ? "Recording " + r.label + " · " + r.packets + " packets · " + r.elapsed.toFixed(0) + (r.seconds ? " / " + r.seconds : "") + " s"
+    : "Not recording";
   if (S.labels && !$("label").options.length) for (const l of S.labels) $("label").add(new Option(l, l));
 }
 
-// ---- data --------------------------------------------------------------------------------
 function connect() {
   const es = new EventSource("/events");
   es.onmessage = (ev) => {
     lastMsg = Date.now(); $("banner").style.display = "none";
     const wasActive = S && S.recording && S.recording.active;
     S = JSON.parse(ev.data);
-    for (const r of S.rows) rows.push(r);
+    for (const r of S.rows || []) rows.push(r);
     if (rows.length > MAX_ROWS) rows = rows.slice(rows.length - MAX_ROWS);
     if (wasActive && !(S.recording && S.recording.active)) loadRecordings();
   };
@@ -324,18 +592,27 @@ function connect() {
 }
 async function post(url, body) {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
-  const j = await r.json().catch(() => ({})); if (!r.ok || j.ok === false) throw new Error(j.error || r.statusText); return j;
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.ok === false) throw new Error(j.error || r.statusText);
+  return j;
 }
 async function loadRecordings() {
   const list = await fetch("/api/recordings").then(r => r.json()).catch(() => []);
   const tb = $("recList"); tb.replaceChildren();
-  if (!list.length) { const tr = tb.insertRow(); const td = tr.insertCell(); td.colSpan = 6; td.className = "muted"; td.textContent = "No recordings yet."; return; }
-  for (const x of list) { const tr = tb.insertRow();
-    [x.file, x.label, (x.started || "").replace("T", " "), x.packets, x.seconds, x.rate].forEach((v, i) => { const td = tr.insertCell(); td.textContent = v ?? "—"; if (i >= 3) td.className = "n"; }); }
+  if (!list.length) {
+    const tr = tb.insertRow(); const td = tr.insertCell(); td.colSpan = 7; td.className = "muted"; td.textContent = "No recordings yet."; return;
+  }
+  for (const x of list) {
+    const tr = tb.insertRow();
+    const cells = [x.file, x.label, x.source || "—", (x.started || "").replace("T", " "), x.packets, x.seconds, x.rate];
+    cells.forEach((v, i) => { const td = tr.insertCell(); td.textContent = v ?? "—"; if (i >= 4) td.className = "n"; });
+  }
 }
 
 $("calib").onclick = () => post("/api/calibrate", { seconds: 10 }).catch(e => alert(e.message));
-let thrTimer; $("thr").oninput = (e) => { clearTimeout(thrTimer); thrTimer = setTimeout(() => post("/api/threshold", { value: +e.target.value }).catch(() => {}), 200); };
+let thrTimer;
+$("thr").oninput = (e) => { clearTimeout(thrTimer); thrTimer = setTimeout(() => post("/api/threshold", { value: +e.target.value }).catch(() => {}), 200); };
+for (const [id, secs] of [["s30", "30"], ["s60", "60"], ["s120", "120"]]) $(id).onclick = () => { $("secs").value = secs; };
 $("recStart").onclick = async () => {
   $("recErr").textContent = "";
   if (!$("consent").checked) { $("recErr").textContent = "Tick the consent box first: everyone in the room must have agreed."; return; }
@@ -344,7 +621,8 @@ $("recStart").onclick = async () => {
 };
 $("recStop").onclick = async () => { try { await post("/api/record/stop"); loadRecordings(); } catch (e) { $("recErr").textContent = e.message; } };
 
-let frame = 0; const rafRender = () => { if (++frame % 2 === 0) render(); requestAnimationFrame(rafRender); };
+let frame = 0;
+const rafRender = () => { if (++frame % 2 === 0) render(); requestAnimationFrame(rafRender); };
 connect(); loadRecordings(); requestAnimationFrame(rafRender);
 setInterval(() => { if (lastMsg && Date.now() - lastMsg > 3000) $("banner").style.display = "block"; }, 1000);
 window.addEventListener("resize", render);

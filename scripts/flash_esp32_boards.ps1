@@ -36,12 +36,14 @@ foreach ($job in @(@{Name = "csi_send"; Port = $SenderPort}, @{Name = "csi_recv"
   try {
     if (Test-Path sdkconfig) { Remove-Item sdkconfig }
     if (Test-Path build) { Remove-Item build -Recurse -Force }
-    idf.py set-target esp32 | Out-Null
+    # Check the native exit code before any pipeline. Piping into Select-Object
+    # can hide a failed idf.py on some PowerShell hosts.
+    & idf.py set-target esp32
     if ($LASTEXITCODE -ne 0) { throw "set-target failed for $($job.Name)" }
-    idf.py build | Select-Object -Last 3
+    & idf.py build
     if ($LASTEXITCODE -ne 0) { throw "build failed for $($job.Name)" }
     Write-Host "4/4 Flashing $($job.Name) to $($job.Port)" -ForegroundColor Cyan
-    idf.py -p $job.Port -b 460800 flash | Select-String "Hash of data verified|Done"
+    & idf.py -p $job.Port -b 460800 flash
     if ($LASTEXITCODE -ne 0) { throw "flash failed for $($job.Name) on $($job.Port)" }
   } finally { Pop-Location }
 }
