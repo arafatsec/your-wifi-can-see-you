@@ -37,6 +37,11 @@ def test_csidata_rejects_bad_input(bad):
         _small(**bad)
 
 
+def test_source_synthetic_must_be_flagged():
+    with pytest.raises(ValueError, match="synthetic"):
+        _small(source="synthetic", synthetic=False)
+
+
 def test_synthetic_is_labelled_and_shaped():
     d = generate_room_csi(duration_s=1.0, sample_rate_hz=50, seed=1)
     assert d.synthetic and d.source == "synthetic"

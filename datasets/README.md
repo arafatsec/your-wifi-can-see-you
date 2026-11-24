@@ -3,6 +3,9 @@
 ⚠️ **Never commit raw datasets to this repo.** Put them under `data/` (git-ignored) and document
 how to download them here instead.
 
+Licences and what we will and will not copy are in
+[`docs/research/open-source-landscape.md`](../docs/research/open-source-landscape.md).
+
 ## Public datasets
 
 | Dataset | Content | Notes |

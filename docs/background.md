@@ -44,10 +44,15 @@ Several consecutive CSI samples are stacked, giving amplitude and phase tensors 
 recorded only to create training labels.
 
 ### Step 1: Phase sanitization
-1. **Unwrap** phase along subcarriers to remove 2π jumps.
-2. **Filter** (e.g. median filter) to remove outliers across time.
-3. **Linear fit** across subcarriers and subtract it, removing the CFO/STO-induced linear phase
-   trend.
+The paper lists three operations: unwrap along subcarriers, a filter across time (a median
+filter is the usual choice), and a linear fit across subcarriers whose subtraction removes the
+CFO/STO slope.
+
+`sanitize_phase` does all three, in an order that does not mix packets. The per-packet line
+is subtracted *before* the median filter. A median taken while each packet still has its own
+offset stitches neighbouring packets together across subcarriers, and the piece that remains
+is no longer a straight line. The filter also repeats the edge samples instead of padding with
+zeros, which would pull a short recording toward 0. See `docs/REVIEW-2026-11-24.md`.
 
 ### Step 2: Modality Translation Network
 Separate MLP encoders embed amplitude and phase; features are fused, reshaped into a small 2D map
