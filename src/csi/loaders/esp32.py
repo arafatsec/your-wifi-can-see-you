@@ -42,6 +42,21 @@ DEFAULT_COLUMNS = [
 
 _ARRAY_RE = re.compile(r"\[([^\]]*)\]")
 
+# esp-csi csi_recv column header (ESP-IDF 5.5.x). The bracketed CSI is the last column
+# and is not part of the comma-separated head, so a headerless line has 24 fields.
+ESPCSI_COLUMNS = [
+    "type", "id", "mac", "rssi", "rate", "sig_mode", "mcs", "bandwidth", "smoothing",
+    "not_sounding", "aggregation", "stbc", "fec_coding", "sgi", "noise_floor", "ampdu_cnt",
+    "channel", "secondary_channel", "local_timestamp", "ant", "sig_len", "rx_format",
+    "len", "first_word", "data",
+]
+
+# Signed 8-bit CSI stored in int16. Anything outside int16 is a corrupt serial token;
+# NumPy 1.x would wrap it and NumPy 2 raises OverflowError.
+_CSI_INT_MIN = -32768
+_CSI_INT_MAX = 32767
+_MAX_CSI_VALUES = 8192
+
 
 def channel_center_hz(channel: int) -> float:
     """Center frequency of a WiFi channel (2.4 GHz channels 1-14, 5 GHz channels 32-177)."""
@@ -54,27 +69,91 @@ def channel_center_hz(channel: int) -> float:
     raise ValueError(f"unknown WiFi channel {channel}")
 
 
-def _parse_lines(lines: Iterable[str]):
-    columns = DEFAULT_COLUMNS
-    for raw in lines:
+class CSILineParser:
+    """Stateful parser for ESP32 CSI text lines, for files or a live serial stream.
+
+    Remembers the most recent header row (`type,...`) so later `CSI_DATA` lines map to the right
+    columns. `feed(line)` returns `(fields, values)` for a CSI line and None for anything else.
+    """
+
+    def __init__(self) -> None:
+        self.columns: list[str] = DEFAULT_COLUMNS
+        self.header_line: str | None = None
+
+    def feed(self, raw: str):
         line = raw.strip()
         if not line or line.startswith("#"):
-            continue
+            return None
         if line.startswith("type,"):
-            columns = [c.strip() for c in line.split(",")]
-            continue
+            self.columns = [c.strip() for c in line.split(",")]
+            self.header_line = line
+            return None
         if not line.startswith("CSI_DATA"):
-            continue  # boot messages, logs, partial lines
+            return None  # boot messages, logs, partial lines
         m = _ARRAY_RE.search(line)
         if not m:
-            continue
-        try:
-            values = np.array([int(v) for v in m.group(1).replace(",", " ").split()], dtype=np.int16)
-        except ValueError:
-            continue  # corrupted serial line
+            return None
+        values = _parse_csi_ints(m.group(1))
+        if values is None:
+            return None  # corrupted serial line, or a value that would wrap in int16
         head = line[: m.start()].rstrip(' ,"').split(",")
+        # No header yet: esp-csi (24 fields, with first_word) and ESP32-CSI-Tool (25 fields)
+        # share the prefix but not the tail. Guessing with the tool layout drops first_word
+        # and keeps the junk subcarriers esp-csi marks invalid.
+        if self.header_line is None and len(head) == len(ESPCSI_COLUMNS) - 1:
+            columns = ESPCSI_COLUMNS
+        else:
+            columns = self.columns
         fields = {name: head[i].strip() for i, name in enumerate(columns) if i < len(head)}
-        yield fields, values
+        return fields, values
+
+
+def lltf_complex(values: np.ndarray, first_word_invalid: bool = False) -> np.ndarray | None:
+    """One packet's raw values -> 64 complex L-LTF subcarriers in order -32..31.
+
+    Accepts 128-value records and longer HT records whose length is a multiple of 128 (the L-LTF
+    block comes first). Returns None for any other length. Junk first-word values are zeroed.
+    """
+    n = len(values)
+    if n < 128 or n % 128:
+        return None
+    v = values[:128].astype(np.float64)
+    if first_word_invalid:
+        v[:4] = 0
+    c = v[1::2] + 1j * v[0::2]  # (imag, real) pairs
+    return np.concatenate([c[32:], c[:32]])
+
+
+def is_first_word_invalid(fields: dict) -> bool:
+    return fields.get("first_word", fields.get("first_word_invalid", "0")).strip() == "1"
+
+
+def _parse_csi_ints(text: str) -> np.ndarray | None:
+    parts = text.replace(",", " ").split()
+    if not parts or len(parts) > _MAX_CSI_VALUES:
+        return None
+    try:
+        nums = [int(part, 10) for part in parts]
+    except ValueError:
+        return None
+    if any(n < _CSI_INT_MIN or n > _CSI_INT_MAX for n in nums):
+        return None
+    return np.asarray(nums, dtype=np.int16)
+
+
+def _float_or_nan(text: object) -> float:
+    try:
+        return float(text)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+def _parse_lines(lines: Iterable[str]):
+    parser = CSILineParser()
+    for raw in lines:
+        out = parser.feed(raw)
+        if out is not None:
+            yield out
 
 
 def _reorder_lltf(c: np.ndarray) -> np.ndarray:
@@ -125,8 +204,7 @@ def load_esp32_csi(
 
     # When the firmware's "first word invalid" flag is set, the first 4 bytes (subcarriers 0 and 1
     # in ESP32 order) hold junk, not channel estimates. Zero them so they are treated as null.
-    first_word_invalid = np.array(
-        [f.get("first_word", f.get("first_word_invalid", "0")).strip() == "1" for f, _ in rows])
+    first_word_invalid = np.array([is_first_word_invalid(f) for f, _ in rows])
     raw[first_word_invalid, :4] = 0
 
     # HT20/HT40 packets append HT-LTF (and STBC) blocks after the L-LTF, e.g. 256, 384 or 640
@@ -149,19 +227,23 @@ def load_esp32_csi(
         csi, idx = csi[:, keep], idx[keep]
 
     # Timestamps: microseconds from the board, may wrap at 2**32.
-    ts = np.array([float(f.get("local_timestamp", "nan") or "nan") for f, _ in rows])
+    # One corrupt token used to abort the whole file. Fall back to the packet index instead.
+    ts = np.array([_float_or_nan(f.get("local_timestamp", "")) for f, _ in rows])
     if np.all(np.isfinite(ts)):
         ts = np.unwrap(ts, period=2**32)
         ts = (ts - ts[0]) / 1e6
         ts = np.maximum.accumulate(ts)  # guard against occasional out-of-order lines
+        timestamps_from = "local_timestamp"
     else:
-        ts = np.arange(len(rows), dtype=np.float64)  # no timestamps: use packet index
+        ts = np.arange(len(rows), dtype=np.float64)
+        timestamps_from = "packet_index"
 
     channels = Counter(int(f["channel"]) for f, _ in rows if f.get("channel", "").isdigit())
     channel = channels.most_common(1)[0][0] if channels else 6
     freqs = channel_center_hz(channel) + idx * SUBCARRIER_SPACING_HZ
 
-    rssi = np.array([float(f["rssi"]) for f, _ in rows if f.get("rssi", "").lstrip("-").isdigit()])
+    # Keep one RSSI per kept packet. A single bad field used to drop the whole column.
+    rssi = np.array([_float_or_nan(f.get("rssi", "")) for f, _ in rows], dtype=np.float64)
 
     return CSIData(
         csi=csi[:, :, None, None],
@@ -177,7 +259,8 @@ def load_esp32_csi(
             "raw_values_per_packet": n_vals,
             "lltf_only": lltf_only,
             "first_word_invalid_packets": int(first_word_invalid.sum()),
-            "rssi_dbm": rssi if len(rssi) == len(rows) else None,
+            "rssi_dbm": rssi,
+            "timestamps_from": timestamps_from,
             "packets_total": len(parsed),
             "packets_used": len(rows),
             "other_macs": {k: v for k, v in macs.items() if k != target},

@@ -104,6 +104,64 @@ def test_works_with_sanitize_phase(tmp_path):
     assert clean.shape == d.phase.shape and np.all(np.isfinite(clean))
 
 
+def test_out_of_range_csi_word_is_skipped(tmp_path):
+    """NumPy 2 raises OverflowError on int16 cast; a corrupt token must not abort the file."""
+    f = tmp_path / "log.csv"
+    re_, im_, _null = write_log(f, n=2, extra_noise=False)
+    good = f.read_text(encoding="utf-8").splitlines()
+    bad = good[-1].replace("[", "[40000,", 1)
+    f.write_text("\n".join(good + [bad]) + "\n", encoding="utf-8")
+    d = load_esp32_csi(f)
+    assert d.n_packets == 2
+    assert np.allclose(d.csi[:, :, 0, 0].real.max(), re_.max())
+
+
+def test_bad_timestamp_falls_back_to_packet_index(tmp_path):
+    f = tmp_path / "log.csv"
+    write_log(f, n=4, extra_noise=False)
+    lines = f.read_text(encoding="utf-8").splitlines()
+    csi = [ln for ln in lines if ln.startswith("CSI_DATA")]
+    csi[0] = csi[0].replace(",1000000,", ",nope,", 1)
+    f.write_text("\n".join([ln for ln in lines if not ln.startswith("CSI_DATA")] + csi) + "\n", encoding="utf-8")
+    d = load_esp32_csi(f)
+    assert d.metadata["timestamps_from"] == "packet_index"
+    assert np.allclose(d.timestamps, np.arange(d.n_packets))
+
+
+def test_one_bad_rssi_does_not_drop_the_column(tmp_path):
+    f = tmp_path / "log.csv"
+    write_log(f, n=3, extra_noise=False)
+    lines = f.read_text(encoding="utf-8").splitlines()
+    csi = [ln for ln in lines if ln.startswith("CSI_DATA")]
+    csi[1] = csi[1].replace(",-45,", ",xx,", 1)
+    f.write_text("\n".join([ln for ln in lines if not ln.startswith("CSI_DATA")] + csi) + "\n", encoding="utf-8")
+    rssi = load_esp32_csi(f).metadata["rssi_dbm"]
+    assert len(rssi) == 3
+    assert np.isnan(rssi[1]) and rssi[0] == -45
+
+
+def test_headerless_espcsi_line_honours_first_word(tmp_path):
+    n = 5
+    re_, im_, null = _true_channel(n)
+    order = list(range(32, 64)) + list(range(0, 32))
+    lines = []
+    for p in range(n):
+        lltf = []
+        for i in order:
+            lltf += [int(im_[p, i]), int(re_[p, i])]
+        lltf[:4] = [40, -20, 9, 1]
+        cols = ["CSI_DATA", str(p), "1a:00:00:00:00:00", "-42", "11", "1", "0", "0", "1", "1", "0", "0",
+                "0", "0", "-96", "0", "6", "0", str(1_000_000 + p * 10_000), "0", "47", "1", "128", "1"]
+        lines.append(",".join(cols) + ',"[' + ",".join(map(str, lltf)) + ']"')
+    f = tmp_path / "noheader.csv"
+    f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    d = load_esp32_csi(f)
+    assert d.metadata["first_word_invalid_packets"] == n
+    keep = ~null.copy()
+    keep[np.arange(-32, 32) == 1] = False
+    assert list(d.metadata["subcarrier_index"]) == list(np.arange(-32, 32)[keep])
+
+
 def test_empty_file_raises(tmp_path):
     f = tmp_path / "empty.csv"
     f.write_text("boot\nno csi here\n", encoding="utf-8")

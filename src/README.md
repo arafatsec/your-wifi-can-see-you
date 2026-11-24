@@ -2,5 +2,5 @@
 
 Work-in-progress code. See [../ROADMAP.md](../ROADMAP.md).
 
-- `csi/`: CSI loading and preprocessing (phase sanitization).
-- `models/` (planned): modality translation network, pose heads.
+- `csi/`: CSI loading, phase sanitization, and the live sensing heuristics.
+- `models/`: pose interface. `PlaceholderPoseModel` is an animation. There are no weights.
