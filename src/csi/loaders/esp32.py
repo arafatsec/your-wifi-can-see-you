@@ -54,27 +54,65 @@ def channel_center_hz(channel: int) -> float:
     raise ValueError(f"unknown WiFi channel {channel}")
 
 
-def _parse_lines(lines: Iterable[str]):
-    columns = DEFAULT_COLUMNS
-    for raw in lines:
+class CSILineParser:
+    """Stateful parser for ESP32 CSI text lines, for files or a live serial stream.
+
+    Remembers the most recent header row (`type,...`) so later `CSI_DATA` lines map to the right
+    columns. `feed(line)` returns `(fields, values)` for a CSI line and None for anything else.
+    """
+
+    def __init__(self) -> None:
+        self.columns: list[str] = DEFAULT_COLUMNS
+        self.header_line: str | None = None
+
+    def feed(self, raw: str):
         line = raw.strip()
         if not line or line.startswith("#"):
-            continue
+            return None
         if line.startswith("type,"):
-            columns = [c.strip() for c in line.split(",")]
-            continue
+            self.columns = [c.strip() for c in line.split(",")]
+            self.header_line = line
+            return None
         if not line.startswith("CSI_DATA"):
-            continue  # boot messages, logs, partial lines
+            return None  # boot messages, logs, partial lines
         m = _ARRAY_RE.search(line)
         if not m:
-            continue
+            return None
         try:
             values = np.array([int(v) for v in m.group(1).replace(",", " ").split()], dtype=np.int16)
         except ValueError:
-            continue  # corrupted serial line
+            return None  # corrupted serial line
         head = line[: m.start()].rstrip(' ,"').split(",")
-        fields = {name: head[i].strip() for i, name in enumerate(columns) if i < len(head)}
-        yield fields, values
+        fields = {name: head[i].strip() for i, name in enumerate(self.columns) if i < len(head)}
+        return fields, values
+
+
+def lltf_complex(values: np.ndarray, first_word_invalid: bool = False) -> np.ndarray | None:
+    """One packet's raw values -> 64 complex L-LTF subcarriers in order -32..31.
+
+    Accepts 128-value records and longer HT records whose length is a multiple of 128 (the L-LTF
+    block comes first). Returns None for any other length. Junk first-word values are zeroed.
+    """
+    n = len(values)
+    if n < 128 or n % 128:
+        return None
+    v = values[:128].astype(np.float64)
+    if first_word_invalid:
+        v[:4] = 0
+    c = v[1::2] + 1j * v[0::2]  # (imag, real) pairs
+    return np.concatenate([c[32:], c[:32]])
+
+
+def is_first_word_invalid(fields: dict) -> bool:
+    return fields.get("first_word", fields.get("first_word_invalid", "0")).strip() == "1"
+
+
+def _parse_lines(lines: Iterable[str]):
+    parser = CSILineParser()
+    for raw in lines:
+        out = parser.feed(raw)
+        if out is not None:
+            yield out
 
 
 def _reorder_lltf(c: np.ndarray) -> np.ndarray:
@@ -125,8 +163,7 @@ def load_esp32_csi(
 
     # When the firmware's "first word invalid" flag is set, the first 4 bytes (subcarriers 0 and 1
     # in ESP32 order) hold junk, not channel estimates. Zero them so they are treated as null.
-    first_word_invalid = np.array(
-        [f.get("first_word", f.get("first_word_invalid", "0")).strip() == "1" for f, _ in rows])
+    first_word_invalid = np.array([is_first_word_invalid(f) for f, _ in rows])
     raw[first_word_invalid, :4] = 0
 
     # HT20/HT40 packets append HT-LTF (and STBC) blocks after the L-LTF, e.g. 256, 384 or 640

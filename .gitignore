@@ -21,3 +21,5 @@ data/
 Thumbs.db
 .vscode/
 .idea/
+# local Claude Code / editor settings
+.claude/

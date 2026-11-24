@@ -16,11 +16,12 @@ Legend: 🟢 good first issue · 🟡 intermediate · 🔴 advanced
 - [x] ESP32 CSI log loader returning `CSIData` + recording script + hardware guide
 - [x] Verify the ESP32 loader and guide on real boards (classic ESP32 + esp-csi, Nov 2026)
 - [ ] 🟡 Loaders for Intel 5300 `.dat` and Nexmon `.pcap` returning `CSIData`
-- [ ] 🟢 Visualization: amplitude/phase heatmaps over time
+- [x] Visualization: live amplitude waterfall, amplitude and phase profiles (`tools/live_dashboard/`)
 
 ## Phase 2.5: Presence & motion detection (first real-world milestone)
 Much easier than pose, works even on cheap ESP32 hardware, and proves the capture pipeline end to end.
-- [ ] 🟢 Baseline: temporal amplitude variance threshold (empty room vs. person moving)
+- [x] Baseline: gain-normalised amplitude variation + calibrated threshold, live in the dashboard
+- [ ] 🟢 Measure the baseline's accuracy on labelled recordings (empty vs. walking)
 - [ ] 🟡 Doppler / motion features from CSI time series
 - [ ] 🟡 Record a small, consented, real dataset (empty / standing / walking) and report accuracy
 - [ ] 🟡 Simple classifier (e.g. random forest or 1D CNN) with honest train/test split by session

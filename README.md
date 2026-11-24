@@ -35,8 +35,10 @@ We only list what exists and is tested. No measured result is claimed until it c
 | Synthetic multipath generator (`src/csi/synthetic.py`) | ✅ For tests only, output labelled `synthetic=True` |
 | ESP32 CSI loader (`src/csi/loaders/esp32.py`) | ✅ Verified on real ESP32 boards running esp-csi ([guide](docs/hardware/esp32.md)) |
 | ESP32 recording script (`scripts/record_esp32.py`) | 🧪 Board connection verified; first labelled recording session not yet made |
+| ESP32 firmware setup (`scripts/flash_esp32_boards.ps1`) | ✅ Configures, builds and flashes both boards; verified on real boards |
+| Live dashboard (`tools/live_dashboard/`) | ✅ Runs against real boards; demo mode without hardware |
 | Loaders for Intel 5300 / Nexmon | ⏳ Not started ([help wanted](https://github.com/arafatsec/your-wifi-can-see-you/issues/6)) |
-| Presence / motion detection | ⏳ Planned |
+| Presence / motion detection | 🧪 Baseline motion score live in the dashboard; accuracy not yet measured on labelled data |
 | Pose / DensePose model | ⏳ Planned, no trained model yet |
 | Real-world accuracy numbers | ❌ None yet |
 
@@ -46,7 +48,9 @@ We only list what exists and is tested. No measured result is claimed until it c
 |---|---|
 | [`docs/background.md`](docs/background.md) | WiFi CSI, multipath, and how the CMU pipeline works |
 | [`docs/hardware/esp32.md`](docs/hardware/esp32.md) | Capture real CSI with two cheap ESP32 boards |
-| [`scripts/`](scripts/) | Data recording tools |
+| [`scripts/`](scripts/) | Board flashing and data recording tools |
+| [`tools/live_dashboard/`](tools/live_dashboard/) | Live local dashboard for the ESP32 boards |
+| [`firmware/esp32/`](firmware/esp32/) | Radio settings applied to Espressif's esp-csi firmware |
 | [`papers/reading-list.md`](papers/reading-list.md) | Curated papers, grouped by topic |
 | [`datasets/README.md`](datasets/README.md) | Public WiFi sensing datasets and CSI capture tools |
 | [`src/`](src/) | Code: CSI preprocessing, models, training (work in progress) |

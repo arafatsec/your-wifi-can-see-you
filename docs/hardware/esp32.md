@@ -84,6 +84,38 @@ Plug in board B. Its port shows up as `COMx` on Windows or `/dev/ttyUSB0` / `/de
 - Keep them in the same spots for every session, and note the setup with `--room`.
 - Avoid moving fans, curtains and pets between the boards while recording "empty".
 
+## 3b. Recommended settings and one-command flashing
+
+Our settings, applied on top of esp-csi by `firmware/esp32/configure_esp_csi.py`:
+
+| Setting | Value | Why |
+|---|---|---|
+| Channel | quietest of 1 / 6 / 11 near you | fewer collisions with your WiFi |
+| Bandwidth | 20 MHz | we only use the 20 MHz L-LTF block; 40 MHz overlaps more networks |
+| Receiver capture | L-LTF only (128 values) | serial link carries ~90-100 packets/s instead of ~70 |
+| Channel filter | off | raw subcarriers, no smoothing |
+| Flash size | 4 MB | matches the boards; removes a boot warning |
+
+Find the quietest channel (Windows), then configure, build and flash both boards:
+
+```powershell
+netsh wlan show networks mode=bssid
+.\scripts\flash_esp32_boards.ps1 -SenderPort COM6 -ReceiverPort COM5 -Channel 1
+```
+
+Measured after flashing (boards side by side): about 90 packets per second, 128 values per
+packet, RSSI about -36 dBm.
+
+## 3c. Live dashboard
+
+```powershell
+python tools/live_dashboard/server.py --port COM5
+```
+
+Open http://127.0.0.1:8765 for the live motion score, waterfall, profiles and recording
+controls. See [tools/live_dashboard/README.md](../../tools/live_dashboard/README.md).
+The dashboard and `record_esp32.py` both need the receiver's port, so run one at a time.
+
 ## 4. Recording protocol
 
 Record each label several times, in separate sessions (e.g. 10 × 60 s each):
